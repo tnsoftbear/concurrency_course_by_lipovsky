@@ -1,3 +1,4 @@
+#include <iostream>
 #include <wheels/test/framework.hpp>
 
 #include <twist/rt/run.hpp>
@@ -20,6 +21,7 @@ TEST_SUITE(Futex) {
       }
 
       // No contention => no system calls
+      std::cout << "scheduler->FutexCount(): " << scheduler->FutexCount() << std::endl;
       ASSERT_EQ(scheduler->FutexCount(), 0);
     });
   }

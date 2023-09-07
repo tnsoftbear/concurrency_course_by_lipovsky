@@ -12,8 +12,9 @@ using tf::Yield;
 void OneFiberDeadLock() {
   Mutex mutex;
 
-  auto fiber = [&] {
-    // I am a Fiber
+  std::function<void()> fiber = [&] {
+    mutex.Lock();
+    fiber();
   };
 
   Spawn(fiber).Join();

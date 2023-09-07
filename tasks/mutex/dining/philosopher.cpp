@@ -19,7 +19,8 @@ void Philosopher::Eat() {
 
 // Acquire left_fork_ and right_fork_
 void Philosopher::AcquireForks() {
-  // Your code goes here
+  left_fork_.lock();
+  right_fork_.lock();
 }
 
 void Philosopher::EatWithForks() {
@@ -31,7 +32,8 @@ void Philosopher::EatWithForks() {
 
 // Release left_fork_ and right_fork_
 void Philosopher::ReleaseForks() {
-  // Your code goes here
+  left_fork_.unlock();
+  right_fork_.unlock();
 }
 
 void Philosopher::Think() {
