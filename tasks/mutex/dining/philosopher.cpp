@@ -1,6 +1,7 @@
 #include "philosopher.hpp"
 
 #include <twist/test/inject_fault.hpp>
+#include "table.hpp"
 
 namespace dining {
 
@@ -19,8 +20,13 @@ void Philosopher::Eat() {
 
 // Acquire left_fork_ and right_fork_
 void Philosopher::AcquireForks() {
-  left_fork_.lock();
-  right_fork_.lock();
+    if (seat_ == 0) {
+      right_fork_.lock();
+      left_fork_.lock();
+    } else {
+      left_fork_.lock();
+      right_fork_.lock();
+    }
 }
 
 void Philosopher::EatWithForks() {
@@ -32,8 +38,8 @@ void Philosopher::EatWithForks() {
 
 // Release left_fork_ and right_fork_
 void Philosopher::ReleaseForks() {
-  left_fork_.unlock();
-  right_fork_.unlock();
+    right_fork_.unlock();
+    left_fork_.unlock();
 }
 
 void Philosopher::Think() {

@@ -13,44 +13,44 @@
 namespace stdlike {
 
 using twist::ed::futex::WakeKey;
+using twist::ed::futex::Wait;
+using twist::ed::futex::PrepareWake;
+using twist::ed::stdlike::atomic;
 
 class Mutex {
  public:
   void Lock() {
-    uint32_t c = Status::Unlocked;
-    m_.compare_exchange_strong(c, Status::LockedNoWaiters);
-    if (c != Status::Unlocked) {
+    uint32_t c;
+    if ((c = Cmpxchg(Status::Unlocked, Status::Locked)) != Status::Unlocked) {
       do {
-        if (c == Status::LockedWithWaiters) {
-          twist::ed::futex::Wait(m_, Status::LockedWithWaiters);
-        } else {
-          uint32_t cc = Status::LockedNoWaiters;
-          m_.compare_exchange_strong(cc, Status::LockedWithWaiters);
-          if (cc != Status::Unlocked) {
-            twist::ed::futex::Wait(m_, Status::LockedWithWaiters);
-          }
+        if (c == Status::Sleeping
+          || Cmpxchg(Status::Locked, Status::Sleeping) != Status::Unlocked
+        ) {
+          Wait(m_, Status::Sleeping);
         }
-
-        c = Status::Unlocked;
-        m_.compare_exchange_strong(c, Status::LockedWithWaiters);
-      } while (c != Status::Unlocked);
+      } while ((c = Cmpxchg(Status::Unlocked, Status::Sleeping)) != Status::Unlocked);
     }
   }
 
   void Unlock() {
-    if (m_.fetch_sub(1) != Status::LockedNoWaiters) {
-      m_.store(Status::Unlocked);
-      WakeKey k = twist::ed::futex::PrepareWake(m_);
-      twist::ed::futex::WakeOne(k);
+    if (m_.exchange(Status::Unlocked) != Status::Locked) {
+      WakeKey k = PrepareWake(m_);
+      WakeOne(k);
     }
   }
 
  private:
-  twist::ed::stdlike::atomic<uint32_t> m_{Status::Unlocked};
+  uint32_t Cmpxchg(uint32_t old_st, uint32_t new_st) {
+    m_.compare_exchange_strong(old_st, new_st);
+    return old_st;
+  }
+
+ private:
+  atomic<uint32_t> m_{Status::Unlocked};
   enum Status {
     Unlocked = 0,
-    LockedNoWaiters = 1,
-    LockedWithWaiters = 2
+    Locked = 1,   // Mutex is locked without waiters
+    Sleeping = 2  // Mutex is locked with waiters
   };
 };
 

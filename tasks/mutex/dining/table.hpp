@@ -1,9 +1,14 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <twist/ed/stdlike/mutex.hpp>
 #include <twist/test/plate.hpp>
 
 #include <vector>
+#include "twist/ed/stdlike/atomic.hpp"
+
+#include <iostream>
 
 namespace dining {
 
