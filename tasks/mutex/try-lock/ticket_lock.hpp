@@ -20,7 +20,15 @@ class TicketLock {
   }
 
   bool TryLock() {
-    return false;  // To be implemented
+    Ticket owner_ticket = owner_ticket_.load();
+    return next_free_ticket_.compare_exchange_strong(owner_ticket, owner_ticket+1);
+
+    // Такое фейлиться на тестах, хз почему:
+    // if (next_free_ticket_.load() == owner_ticket_.load()) {
+    //   next_free_ticket_.fetch_add(1);
+    //   return true;
+    // }
+    // return false;
   }
 
   // Do not change this method
