@@ -25,12 +25,15 @@ TEST_SUITE(MutualExclusion) {
           QueueSpinLock::Guard guard{spinlock};
           {
             // Critical section
+            // plate.PrintA();
+            // std::cout << "plate.Access()" << std::endl;
             plate.Access();
           }
         }
       });
     }
 
+    // std::cout << "Race.run" << std::endl;
     race.Run();
 
     std::cout << "Critical sections: " << plate.AccessCount() << std::endl;
