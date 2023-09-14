@@ -24,8 +24,11 @@
  *
  */
 
+// Это решение проходит: clippy target stress_tests Debug
+// И зависает на: clippy target stress_tests FaultyThreadsASan
+
 const bool kShouldPrint{true};
-//const bool kShouldPrint{false};
+// const bool kShouldPrint{false};
 
 class QueueSpinLock {
  public:
@@ -45,7 +48,7 @@ class QueueSpinLock {
    public:
     QueueSpinLock& host;
     Guard* next{nullptr};
-    bool is_owner{true};
+    bool locked{false};
   };
 
  public:
@@ -54,44 +57,73 @@ class QueueSpinLock {
  private:
   void Acquire(Guard* waiter) {
     char* s = PrintChain(waiter);
-    Ll("Acquire| Start for waiter(%p) (%s)", (void*)waiter, s);
+    Ll("Start Acquire for waiter: %p (%s)", (void*)waiter, s);
     delete s;
+    QueueSpinLock& host = waiter->host;
 
-    Guard* prev_tail = waiter->host.tail.exchange(waiter);
-    if (prev_tail != nullptr) {
-      waiter->is_owner = false;
-      prev_tail->next = waiter;
-      Ll("Acquire| waiter(%p)->is_owner=false: and prev_tail(%p)->next=waiter", waiter, prev_tail);
-
-      twist::ed::SpinWait spin_wait;
-      while (!waiter->is_owner) {
-        Ll("Acquire| Spinning waiter(%p)", (void*)waiter);
-        spin_wait();
+    bool success = false;
+    do { // CAS-loop
+      Guard* prev_tail = host.tail.load();
+      Guard* tmp_tail = prev_tail;
+      success = host.tail.compare_exchange_weak(tmp_tail, waiter);
+      if (success) {
+        if (prev_tail != nullptr) {
+          waiter->locked = true;
+          Ll("Set waiter->locked=true: %p", (void*)waiter);
+          prev_tail->next = waiter;
+          Ll("Set prev_tail->next: %p for prev_tail: %p", (void*)waiter, (void*)prev_tail);
+        } else {
+          waiter->locked = false;
+          Ll("First node set: %p", (void*)waiter);
+        }
+        Ll("Successfully changed tail from %p to %p", (void*)prev_tail, (void*)waiter);
+      } else {
+        Ll("Cannot change tail from %p to %p", (void*)prev_tail, (void*)waiter);
       }
-      Ll("Acquire| After spin for waiter(%p)", (void*)waiter);
-    } else {
-      waiter->is_owner = true;
-      Ll("Acquire| Waiter(%p) is owner free of spin", (void*)waiter);
+    } while (!success);
+
+    char* ss = PrintChain(waiter);
+    Ll("Before spin for waiter: %p (%s)", (void*)waiter, s);
+    delete(ss);
+
+    twist::ed::SpinWait spin_wait;
+    while (waiter->locked) {
+      spin_wait();
+      Ll("Spinning waiter: %p", (void*)waiter);
     }
+    Ll("After spin for waiter: %p", (void*)waiter);
   }
 
   void Release(Guard* owner) {
     char* s = PrintChain(owner);
-    Ll("Release: Start for owner(%p) (%s)", (void*)owner, s);
+    Ll("Release: Start for owner: %p (%s)", (void*)owner, s);
     delete s;
 
-    Guard* owner_tmp = owner;
     QueueSpinLock& host = owner->host;
-    if (host.tail.compare_exchange_strong(owner_tmp, nullptr)) {
-      Ll("Release: Released owner(%p) when it is tail", (void*)owner);
+    if (host.tail.load() == nullptr) {
+      // nothing to release
+      Ll("Release: Nothing to release host.tail is null");
       return;
     }
 
-    while (owner->next == nullptr) {
-      Ll("while (owner(%p)->next == nullptr)", owner);
-    }
-    owner->next->is_owner = true;
-    Ll("Release: Released owner(%p) and owner->next(%p)->is_owner=true", (void*)owner, (void*)owner->next);
+    bool success = false;
+    do {
+      if (owner->next == nullptr) {
+        Guard* tmp_owner = owner;
+        success = host.tail.compare_exchange_strong(tmp_owner, nullptr);
+        if (success) {
+          Ll("Release: Ok changed tail to null");
+        } else {
+          Ll("Release: Not changed tail to null, will repeat");
+        }
+      } else {
+        owner->next->locked = false;
+        success = true;
+        Ll("Release: owner->next->locked=false");
+      }
+    } while (!success);
+
+    Ll("Release: Released owner: %p", (void*)owner);
   }
 
   char* PrintChain(Guard* guard) {

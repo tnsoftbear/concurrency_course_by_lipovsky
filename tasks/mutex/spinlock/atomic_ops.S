@@ -22,3 +22,4 @@ FUNCTION_NAME(AtomicExchange):
     movq %rsi, %rax
     xchg %rax, (%rdi)
     retq
+ 
