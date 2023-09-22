@@ -18,10 +18,32 @@
  *
  */
 
+template<typename T, typename Lock, class Mutex>
+struct Accessor {
+  Accessor(T& object, Mutex& mutex) : object_(object), lock_(mutex) {}
+
+  T* operator->() {
+    return &object_;
+  }
+
+  const T* operator->() const {
+    return &object_;
+  }
+
+  const T& operator*() const {
+    return object_;
+  }
+
+  T& operator*() {
+    return object_;
+  }
+
+  T& object_;
+  Lock lock_;
+};
+
 template <typename T, class Mutex = twist::ed::stdlike::mutex>
 class Mutexed {
-  // Define your own OwnerRef
-  using OwnerRef = T*;
 
  public:
   // https://eli.thegreenplace.net/2014/perfect-forwarding-and-universal-references-in-c/
@@ -30,8 +52,8 @@ class Mutexed {
       : object_(std::forward<Args>(args)...) {
   }
 
-  OwnerRef Acquire() {
-    return &object_;  // Your code goes here
+  auto Acquire() {
+    return Accessor<T, std::lock_guard<Mutex>, Mutex>{ object_, mutex_ };
   }
 
  private:
