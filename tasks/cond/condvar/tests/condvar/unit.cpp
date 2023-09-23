@@ -11,26 +11,38 @@
 
 using namespace std::chrono_literals;
 
+//const bool kShouldPrint{true};
+const bool kShouldPrint{false};
+void Ll(const char* format, ...);
+
 TEST_SUITE(CondVar) {
 
   class Event {
    public:
     void Await() {
+      Ll("Await in");
       std::unique_lock lock(mutex_);
       while (!set_) {
+        Ll("Before set_cond_.Wait(lock)");
         set_cond_.Wait(lock);
+        Ll("After set_cond_.Wait(lock)");
       }
+      Ll("Await out");
     }
 
     void Set() {
+      Ll("Set in");
       std::lock_guard guard(mutex_);
       set_ = true;
       set_cond_.NotifyOne();
+      Ll("Set out");
     }
 
     void Reset() {
+      Ll("Reset in");
       std::lock_guard guard(mutex_);
       set_ = false;
+      Ll("Reset out");
     }
 
    private:
@@ -130,6 +142,22 @@ TEST_SUITE(CondVar) {
       cv.NotifyOne();
     }
   }
+
+}
+
+void Ll(const char* format, ...) {
+  if (!kShouldPrint) {
+    return;
+  }
+
+  char buf [50];
+  std::ostringstream pid;
+  pid << "[" << std::this_thread::get_id() << "]";
+  sprintf(buf, "%s %s\n", pid.str().c_str(), format);
+  va_list args;
+  va_start(args, format);
+  vprintf(buf, args);
+  va_end(args);
 }
 
 RUN_ALL_TESTS()
