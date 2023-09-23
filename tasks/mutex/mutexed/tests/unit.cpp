@@ -82,7 +82,7 @@ TEST_SUITE(Mutexed) {
     t1.join();
     t2.join();
 
-    ASSERT_EQ(Acquire(counter)->Value(), 2);
+Acquire(counter)->Value()    ASSERT_EQ(, 2);
   }
 }
 

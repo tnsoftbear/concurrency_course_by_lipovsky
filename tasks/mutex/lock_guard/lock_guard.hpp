@@ -3,8 +3,8 @@
 template <typename Mutex>
 class LockGuard {
  public:
-  explicit LockGuard(Mutex& m) : m_(&m) {
-    (*m_).lock();
+  explicit LockGuard(Mutex& m) : m_(m) {
+    m_.lock();
   }
 
   // Non-copyable
@@ -16,8 +16,8 @@ class LockGuard {
   LockGuard& operator=(LockGuard&&) = delete;
 
   ~LockGuard() {
-    (*m_).unlock();
+    m_.unlock();
   }
  private:
-  Mutex* m_;
+  Mutex& m_;
 };

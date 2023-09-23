@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdio>
 #include <string>
 #include <twist/ed/stdlike/atomic.hpp>
 #include <twist/ed/wait/spin.hpp>
@@ -149,15 +150,13 @@ class QueueSpinLock {
       return;
     }
 
-    std::string buf("");
+    char buf [50];
     std::ostringstream pid;
-    pid << "[" << twist::ed::stdlike::this_thread::get_id() << "] ";
-    buf.append(pid.str());
-    buf.append(format);
-    buf.append("\n");
+    pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+    sprintf(buf, "%s %s\n", pid.str().c_str(), format);
     va_list args;
     va_start(args, format);
-    vprintf(&*buf.begin(), args);
+    vprintf(buf, args);
     va_end(args);
   }
 
