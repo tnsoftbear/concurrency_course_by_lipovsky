@@ -6,7 +6,9 @@
 
 TEST_SUITE(CyclicBarrier) {
   SIMPLE_TEST(OneThread) {
+    std::cout << "Before constructor" << std::endl;
     CyclicBarrier barrier{1};
+    std::cout << "After constructor" << std::endl;
 
     for (size_t i = 0; i < 10; ++i) {
       barrier.ArriveAndWait();
