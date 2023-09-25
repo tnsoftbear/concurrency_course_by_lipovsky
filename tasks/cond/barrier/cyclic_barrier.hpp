@@ -4,7 +4,6 @@
 #include <mutex>
 #include <twist/ed/stdlike/mutex.hpp>
 #include <twist/ed/stdlike/condition_variable.hpp>
-#include <twist/ed/stdlike/atomic.hpp>
 
 #include <cstdlib>
 
@@ -15,8 +14,10 @@ using twist::ed::stdlike::condition_variable;
 #include <sstream>
 #include <iostream>
 
+#include <twist/ed/stdlike/atomic.hpp>
+using twist::ed::stdlike::atomic;
 
-// clippy target stress_tests FaultyFibers
+// Это решение использует атомики, иначе не проходят тесты ThreadSanitizer профиля:
 // clippy target stress_tests FaultyThreadsTSan
 
 //const bool kShouldPrint = true;
@@ -28,42 +29,41 @@ class CyclicBarrier {
     : participants_(participants)
   {
     mtx_ = std::make_unique<mutex>();
-    //limit_mtx_ = std::make_unique<mutex>();
-    //arrived_.store(0);
+    arrived_.store(0);
   }
 
   void ArriveAndWait() {
     Ll("~~~ ArriveAndWait() ~~~");
-    if (arrived_ >= participants_ || departed_ != 0) {
-      Ll("Limit-Lock because arrived_[%lu] >= participants_[%lu] || departed_[%lu] != 0", arrived_, participants_, departed_);
-      std::unique_lock<mutex> limit_lock(*mtx_);
-      cv_limit_mtx_.wait(limit_lock, [&] { 
-        //Ll("In wait arrival_nr: %lu, arrived_: %lu >= participants_: %lu", arrival_nr, arrived_, participants_);
-        return arrived_ < participants_ && departed_ == 0; 
+    if (arrived_.load() >= participants_ || departed_.load() != 0) {
+      Ll("Limit-Lock because arrived_[%lu] >= participants_[%lu] || departed_[%lu] != 0", arrived_.load(), participants_, departed_.load());
+      std::unique_lock<mutex> limit_reached_lock(*mtx_);  // тот же мьютекс, что и ниже
+      limit_reached_cv_.wait(limit_reached_lock, [&] { 
+        Ll("In limit-lock wait arrived_: %lu >= participants_: %lu", arrived_.load(), participants_);
+        return arrived_.load() < participants_ && departed_.load() == 0; 
       });
     }
 
-    // while (arrived_ >= participants_ || departed_ != 0) {
-    // }
-
-    std::unique_lock<mutex> lock(*mtx_);
-    size_t arrival_nr = ++arrived_; // защищаем операцию++ мьютексом чтобы не делать атомик
-    Ll("Arrival_nr: %lu (arrived: %lu)", arrival_nr, arrived_);
-    cv_.wait(lock, [&] { 
-      //Ll("In wait arrival_nr: %lu, arrived_: %lu >= participants_: %lu", arrival_nr, arrived_, participants_);
-      return arrived_ >= participants_; 
+    auto arrival_waiting_lock = std::make_unique<std::unique_lock<mutex>>(*mtx_);
+    // Здесь счётчик arrived_ защищён мьютексом и этого как буд-то бы должно быть достаточно и помогает избежать атомика..
+    // Но такое решение не проходит при профиле ThreadSanitizer, поэтому используется атомик.
+    size_t arrival_nr = arrived_.fetch_add(1);
+    Ll("Arrival_nr: %lu (arrived: %lu)", arrival_nr, arrived_.load());
+    cv_.wait(*arrival_waiting_lock, [&] { 
+      Ll("In wait for full arrival group. arrival_nr: %lu, arrived_: %lu >= participants_: %lu", arrival_nr, arrived_.load(), participants_);
+      return arrived_.load() >= participants_; 
     });
-    if (arrived_ >= participants_ && !is_notified_) {
+    if (arrived_.load() >= participants_ && !is_notified_) {
       is_notified_ = true;
-      Ll("Notify all when arrival_nr: %lu (arrived: %lu)", arrival_nr, arrived_);
+      Ll("Notify all when arrival_nr: %lu (arrived: %lu)", arrival_nr, arrived_.load());
       cv_.notify_all();
     }
-    ++departed_;
-    if (departed_ >= arrived_) {
-      arrived_ = 0;
-      departed_ = 0;
+    departed_.fetch_add(1);
+    Ll("Departed %lu for arrival_nr: %lu", departed_.load(), arrival_nr);
+    if (departed_.load() >= arrived_.load()) {
+      arrived_.store(0);
+      departed_.store(0);
       is_notified_ = false;
-      cv_limit_mtx_.notify_all();
+      limit_reached_cv_.notify_all();
       Ll("Drop departed_/arrived_, unlock limit-lock");
     }
   }
@@ -85,12 +85,11 @@ class CyclicBarrier {
 
  private:
   size_t participants_{0};
-  size_t arrived_{0};
-  size_t departed_{0};
-  condition_variable cv_;
-  //std::unique_lock<mutex> lock_;
+  // Используются атомики, потому что иначе не проходят тесты с профилем FaultyThreadsTSan
+  atomic<size_t> arrived_{0};
+  atomic<size_t> departed_{0};
   std::unique_ptr<mutex> mtx_;
-  //std::unique_ptr<mutex> limit_mtx_;
+  condition_variable cv_;
+  condition_variable limit_reached_cv_;
   bool is_notified_{false};
-  condition_variable cv_limit_mtx_;
 };
