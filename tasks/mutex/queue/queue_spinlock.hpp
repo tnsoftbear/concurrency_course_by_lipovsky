@@ -28,8 +28,8 @@
 // Это решение проходит: clippy target stress_tests Debug
 // И зависает на: clippy target stress_tests FaultyThreadsASan
 
-const bool kShouldPrint{true};
-// const bool kShouldPrint{false};
+// const bool kShouldPrint{true};
+const bool kShouldPrint{false};
 
 class QueueSpinLock {
  public:

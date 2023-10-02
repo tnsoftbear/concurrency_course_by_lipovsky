@@ -15,7 +15,8 @@ using twist::ed::stdlike::condition_variable;
 #include <iostream>
 
 
-// Это решение не использует атомики, но не проходит тесты с профилем ThreadSanitizer
+// Это решение не использует атомики, а синхронизирует доступ к счётчикам через мьютекс.
+// Но оно тоже не проходит тест со ThreadSanitizer
 // clippy target stress_tests FaultyThreadsTSan
 
 //const bool kShouldPrint = true;
@@ -27,6 +28,8 @@ class CyclicBarrier {
     : participants_(participants)
   {
     mtx_ = std::make_unique<mutex>();
+    arrived_mtx_ = std::make_unique<mutex>();
+    departed_mtx_ = std::make_unique<mutex>();
   }
 
   void ArriveAndWait() {
@@ -40,8 +43,17 @@ class CyclicBarrier {
       });
     }
 
+    // защищаем операцию ++arrived_ мьютексом чтобы не делать атомик
     std::unique_lock<mutex> lock(*mtx_);
-    size_t arrival_nr = ++arrived_; // защищаем операцию++ мьютексом чтобы не делать атомик
+
+Ll("1a]");
+    arrived_mtx_->lock(); // mutex JIC. Операция уже под мьютексом, что выше
+Ll("2a]");
+    arrived_ = arrived_ + 1;
+    size_t arrival_nr = arrived_; 
+Ll("3a]");
+    arrived_mtx_->unlock();
+
     Ll("Arrival_nr: %lu (arrived: %lu)", arrival_nr, arrived_);
     arrival_waiting_cv_.wait(lock, [&] { 
       Ll("In wait for full arrival group. arrival_nr: %lu, arrived_: %lu >= participants_: %lu", arrival_nr, arrived_, participants_);
@@ -52,7 +64,15 @@ class CyclicBarrier {
       Ll("Notify all when arrival_nr: %lu (arrived: %lu)", arrival_nr, arrived_);
       arrival_waiting_cv_.notify_all();
     }
-    ++departed_;
+
+  // защищаем операцию ++departed_ мьютексом чтобы не делать атомик
+Ll("1d]");
+    departed_mtx_->lock();
+Ll("2d]");
+    departed_ = departed_ + 1;
+Ll("3d]");
+    departed_mtx_->unlock();
+
     if (departed_ == arrived_) {
       arrived_ = 0;
       departed_ = 0;
@@ -79,9 +99,11 @@ class CyclicBarrier {
 
  private:
   size_t participants_{0};
-  size_t arrived_{0};
-  size_t departed_{0};
+  volatile size_t arrived_{0};
+  volatile size_t departed_{0};
   std::unique_ptr<mutex> mtx_;
+  std::unique_ptr<mutex> arrived_mtx_;
+  std::unique_ptr<mutex> departed_mtx_;
   bool is_notified_{false};
   condition_variable arrival_waiting_cv_;
   condition_variable limit_reached_cv_;

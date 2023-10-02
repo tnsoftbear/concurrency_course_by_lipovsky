@@ -1,46 +1,47 @@
 #pragma once
 
+#include <condition_variable>
+#include <mutex>
 #include <twist/ed/stdlike/atomic.hpp>
-#include <twist/ed/wait/sys.hpp>
-#include <twist/ed/wait/spin.hpp>
 
 #include <cstdlib>
 #include <iostream>
-#include "twist/rt/layer/facade/wait/futex.hpp"
+#include <twist/ed/stdlike/condition_variable.hpp>
+#include <twist/ed/stdlike/mutex.hpp>
 
 using twist::ed::stdlike::atomic;
-//using twist::ed::stdlike::atomic_flag;
+using twist::ed::stdlike::condition_variable;
+using twist::ed::stdlike::mutex;
+
+// Корректная реализация с 1 атомиком и ожиданием через кондвар.
+// Липовский говорит, что можно написать просто с 1 атомиком и ожиданием на нём. Хз как.
 
 class WaitGroup {
  public:
   // += count
   void Add(size_t count) {
     counter_.fetch_add(count);
-    done_.store(0);
   }
 
   // =- 1
   void Done() {
-    uint32_t old = counter_.fetch_sub(1);
-    if (old == 1) {
-      done_.store(1);
-      twist::ed::futex::WakeKey k = twist::ed::futex::PrepareWake(done_);
-      twist::ed::futex::WakeAll(k);
+    if (counter_.fetch_sub(1) == 1) {
+      std::lock_guard guard(mtx_);
+      idle_cv_.notify_all();
     }
-    //std::cout << "Counter: " << old - 1 << std::endl;
   }
 
   // == 0
   // One-shot
   void Wait() {
-    //std::cout << "Before wait" << std::endl;
-    while (done_.load() == 0) {
-      twist::ed::futex::Wait(done_, 0);
-    }
-    //std::cout << "After wait" << std::endl;
+    std::unique_lock lock(mtx_);
+    idle_cv_.wait(lock, [this]() {
+      return counter_.load() == 0;
+    });
   }
 
  private:
   atomic<uint32_t> counter_{0};
-  atomic<uint32_t> done_{1};
+  condition_variable idle_cv_;
+  mutex mtx_;
 };

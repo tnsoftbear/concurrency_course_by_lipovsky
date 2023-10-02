@@ -30,6 +30,7 @@ class CyclicBarrier {
   {
     mtx_ = std::make_unique<mutex>();
     arrived_.store(0);
+    departed_.store(0);
   }
 
   void ArriveAndWait() {
@@ -48,18 +49,18 @@ class CyclicBarrier {
     // Но такое решение не проходит при профиле ThreadSanitizer, поэтому используется атомик.
     size_t arrival_nr = arrived_.fetch_add(1);
     Ll("Arrival_nr: %lu (arrived: %lu)", arrival_nr, arrived_.load());
-    cv_.wait(*arrival_waiting_lock, [&] { 
+    arrival_waiting_cv_.wait(*arrival_waiting_lock, [&] { 
       Ll("In wait for full arrival group. arrival_nr: %lu, arrived_: %lu >= participants_: %lu", arrival_nr, arrived_.load(), participants_);
-      return arrived_.load() >= participants_; 
+      return arrived_.load() == participants_; 
     });
-    if (arrived_.load() >= participants_ && !is_notified_) {
+    if (arrived_.load() == participants_ && !is_notified_) {
       is_notified_ = true;
       Ll("Notify all when arrival_nr: %lu (arrived: %lu)", arrival_nr, arrived_.load());
-      cv_.notify_all();
+      arrival_waiting_cv_.notify_all();
     }
     departed_.fetch_add(1);
     Ll("Departed %lu for arrival_nr: %lu", departed_.load(), arrival_nr);
-    if (departed_.load() >= arrived_.load()) {
+    if (departed_.load() == arrived_.load()) {
       arrived_.store(0);
       departed_.store(0);
       is_notified_ = false;
@@ -89,7 +90,7 @@ class CyclicBarrier {
   atomic<size_t> arrived_{0};
   atomic<size_t> departed_{0};
   std::unique_ptr<mutex> mtx_;
-  condition_variable cv_;
+  condition_variable arrival_waiting_cv_;
   condition_variable limit_reached_cv_;
   bool is_notified_{false};
 };
