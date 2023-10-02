@@ -1,17 +1,23 @@
 #pragma once
 
+#include <thread>
 #include <tp/queue.hpp>
 #include <tp/task.hpp>
 
 #include <twist/ed/stdlike/thread.hpp>
 
+#include "wait_group.hpp"
+
 namespace tp {
+
+using WorkersT = std::vector<twist::ed::stdlike::thread>;
+using QueueT = UnboundedBlockingQueue<Task>;
 
 // Fixed-size pool of worker threads
 
 class ThreadPool {
  public:
-  explicit ThreadPool(size_t threads);
+  explicit ThreadPool(size_t thread_total);
   ~ThreadPool();
 
   // Non-copyable
@@ -38,7 +44,22 @@ class ThreadPool {
   void Stop();
 
  private:
-  // Worker threads, task queue, etc
+  void WorkerRoutine();
+  void Ll(const char* format, ...);
+  static std::string DetectPid();
+
+ private:
+  size_t thread_total_;
+  QueueT tasks_;
+  WorkersT workers_;
+  twist::ed::stdlike::condition_variable worker_routine_cv_;
+  twist::ed::stdlike::mutex worker_routine_mtx_;
+  atomic<bool> is_running_{false}; // Если не атомик, то падает на clippy target tp_stress_tests FaultyThreadsTSan
+  twist::ed::stdlike::mutex mtx_;
+  WaitGroup incomplete_task_wg_;
+  // atomic<size_t> worker_routine_wait_counter_{0};
+  // atomic<size_t> completed_tasks_;
+  // atomic<size_t> submitted_tasks_;
 };
 
 }  // namespace tp

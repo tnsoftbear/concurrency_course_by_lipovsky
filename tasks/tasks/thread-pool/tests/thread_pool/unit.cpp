@@ -345,8 +345,9 @@ TEST_SUITE(ThreadPool) {
 
     std::atomic<int> shared_counter{0};
     std::atomic<int> tasks{0};
+    int cnt = 100500;
 
-    for (size_t i = 0; i < 100500; ++i) {
+    for (size_t i = 0; i < (size_t)cnt; ++i) {
       pool.Submit([&]() {
         int old = shared_counter.load();
         shared_counter.store(old + 1);
@@ -360,8 +361,8 @@ TEST_SUITE(ThreadPool) {
 
     std::cout << "Racy counter value: " << shared_counter << std::endl;
 
-    ASSERT_EQ(tasks.load(), 100500);
-    ASSERT_LE(shared_counter.load(), 100500);
+    ASSERT_EQ(tasks.load(), cnt);
+    ASSERT_LE(shared_counter.load(), cnt);
   }
 }
 
