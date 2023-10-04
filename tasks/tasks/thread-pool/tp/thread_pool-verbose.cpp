@@ -10,8 +10,8 @@
 
 namespace tp {
 
-const bool kShouldPrintTp = true;
-//const bool kShouldPrintTp = false;
+//const bool kShouldPrintTp = true;
+const bool kShouldPrintTp = false;
 
 static ThreadPool* ctp;
 // static thread::id ctp_tid;
