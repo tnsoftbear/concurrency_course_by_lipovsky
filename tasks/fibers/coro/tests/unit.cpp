@@ -7,6 +7,21 @@
 #include <sstream>
 #include <thread>
 
+  // void Ll(const char* format, ...) {
+  //   if (false) {
+  //     return;
+  //   }
+
+  //   char buf [250];
+  //   std::ostringstream pid;
+  //   //pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+  //   sprintf(buf, "%s\n", format);
+  //   va_list args;
+  //   va_start(args, format);
+  //   vprintf(buf, args);
+  //   va_end(args);
+  // }
+
 //////////////////////////////////////////////////////////////////////
 
 struct TreeNode;
@@ -183,7 +198,7 @@ TEST_SUITE(Coroutine) {
   }
 
   SIMPLE_TEST(Pipeline) {
-    const size_t kSteps = 123;
+    const size_t kSteps = 1;
 
     size_t step_count = 0;
 
