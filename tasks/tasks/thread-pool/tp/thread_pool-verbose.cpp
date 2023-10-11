@@ -17,8 +17,6 @@ static ThreadPool* ctp;
 // static thread::id ctp_tid;
 static std::string ctp_tid;
 
-//typedef unsigned long int pthread_t;
-
 ThreadPool::ThreadPool(size_t thread_total)
  : thread_total_(thread_total)
  , is_running_(false)
@@ -30,6 +28,12 @@ ThreadPool::ThreadPool(size_t thread_total)
   ctp = this;
   ctp_tid = ThreadPool::DetectPid();
   workers_.reserve(thread_total_);
+}
+
+ThreadPool::~ThreadPool() {
+  assert(tasks_.IsEmpty());
+  assert(tasks_.IsClosed());
+  Ll("Destructed");
 }
 
 // Пул должен быть запущен с помощью явного вызова метода Start
@@ -46,24 +50,18 @@ void ThreadPool::Start() {
   }
 }
 
-ThreadPool::~ThreadPool() {
-  assert(tasks_.IsEmpty());
-  assert(tasks_.IsClosed());
-  Ll("Destructed");
-}
-
 // Запланировать задачу на исполнение в пуле
 // Вызов Submit не дожидается завершения задачи, он лишь добавляет ее в очередь задач пула, после чего возвращает управление.
 // Метод Submit можно вызывать из разных потоков, без внешней синхронизации.
 void ThreadPool::Submit(Task task) {
   Ll("Submit: enter");
-  {
-    // clippy target tp_stress_tests FaultyFibers --suite WaitIdle --test Series
-    std::unique_lock<mutex> lock(worker_routine_mtx_);
   incomplete_task_wg_.Add(1);
   tasks_.Put(std::move(task));
   is_running_.store(true);
   submitted_tasks_.fetch_add(1);
+  {
+    // clippy target tp_stress_tests FaultyFibers --suite WaitIdle --test Series
+    std::unique_lock<mutex> lock(worker_routine_mtx_);
     worker_routine_cv_.notify_one();
   }
   Ll("Submit: end");

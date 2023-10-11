@@ -5,7 +5,6 @@
 #include <tp/task.hpp>
 
 #include <twist/ed/stdlike/thread.hpp>
-
 #include "wait_group.hpp"
 
 namespace tp {
