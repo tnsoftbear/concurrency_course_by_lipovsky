@@ -19,12 +19,17 @@ void Ll(const char* format, ...) {
 }
 
 void Go(Scheduler& scheduler, Routine routine) {
+  Ll("fibers::Go-2: Start, scheduler: %p", &scheduler);
   fibers::Fiber* fiber = new fibers::Fiber(scheduler, std::move(routine));
+  Ll("fibers::Go-2: before Submit");
   fiber->Schedule();
+  Ll("fibers::Go-2: End");
 }
 
 void Go(Routine routine) {
+  Ll("fibers::Go-1: Start");
   Go(*Scheduler::Current(), std::move(routine));
+  Ll("fibers::Go-1: End");
 }
 
 }  // namespace exe::fibers

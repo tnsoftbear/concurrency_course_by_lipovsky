@@ -26,11 +26,15 @@ class Fiber {
   Scheduler& GetScheduler() {
     return scheduler_;
   };
+  size_t GetId() {
+    return id_.load();
+  }
   bool IsSuspended() const;
 
  private:
   Scheduler& scheduler_;
   coro::SimpleCoroutine* coro_;
+  atomic<size_t> id_{0};
 };
 
 }  // namespace exe::fibers

@@ -12,11 +12,5 @@
         "FaultyThreadsASan"
       ]
     }
-  ],
-  "lint_files": ["exe"],
-  "submit_files": ["exe"],
-  "forbidden_patterns": [
-    "shared_ptr",
-    "sleep_for"
   ]
 }

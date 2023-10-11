@@ -25,9 +25,10 @@ void Ll2(const char* format, ...) {
 
 void Yield() {
   // Здесь происходит состояние гонки, если запланированная задача файбера из Schedule() выполняется раньше, 
-  // чем произойдет переключение контекста в Suspend().
+  // чем произойдет переключение контекста в Suspend(). См. In_yield_submit_suspend_data_race.log
   // Хз, как иначе реализовать задержку выполнения следующей задачи. 
   // Липовский упоминает некую ф-ция SubmitContinuation(). (Хз как реализовать, возможно, с ещё одной очередью..)
+  Ll2("Yield: before Schedule");
   auto fiber = Fiber::Self();
 
   exe::tp::Submit(fiber->GetScheduler(), [fiber]() { 
@@ -36,8 +37,10 @@ void Yield() {
       spin_wait();
     }
     fiber->Schedule();
+    //fiber->Run(); 
   });
 
+  Ll2("Yield: before Suspend()");
   coro::Coroutine::Suspend();
 }
 

@@ -49,6 +49,10 @@ class Coroutine : private sure::ITrampoline {
 
   void Ll(const char* format, ...);
 
+  size_t GetId() {
+    return id_;
+  };
+
   void SetStatus(Status status) {
     status_.store(status);
   }

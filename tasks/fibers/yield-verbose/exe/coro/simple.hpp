@@ -8,6 +8,8 @@ namespace exe::coro {
 
 // Simple stackful coroutine
 
+// using SimpleCoroutine = Coroutine;
+
 using Routine = fu2::unique_function<void()>;
 
 class SimpleCoroutine : private IRunnable {
@@ -25,7 +27,13 @@ class SimpleCoroutine : private IRunnable {
     return GetStatus() == Status::Completed;
   }
 
+  //void ReleaseResources();
   void Ll(const char* format, ...);
+  //void SwitchToScheduler();
+
+  size_t GetId() {
+    return impl_.GetId();
+  };
 
   void SetStatus(Status status) {
     impl_.SetStatus(status);
