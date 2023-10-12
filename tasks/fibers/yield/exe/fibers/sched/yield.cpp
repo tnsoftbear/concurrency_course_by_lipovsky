@@ -36,10 +36,16 @@ void Yield() {
     while (!fiber->IsSuspended()) {
       spin_wait();
     }
-    fiber->Schedule();
+    // Эта матрёшка сабмитов выглядит как искуственное замедление, чтобы отложить исполнение в планировщике.
+    // Всё-равно здесь возможна гонка, и планировщик может начать выполнять текущую корутину до Susped(). Она воспроизводится, но реже.
+    exe::tp::Submit(fiber->GetScheduler(), [fiber]() {
+      fiber->Schedule();
+    });
+    //fiber->Schedule();
   });
 
   fiber->SetStatus(Status::Suspended);
+  //std::th is_thread::sle ep_for(std::chrono::microseconds(800));
   coro::SimpleCoroutine::Suspend();
 }
 

@@ -21,9 +21,6 @@ Coroutine::Coroutine(
   context_.Setup(stack, this);
 }
 
-Coroutine::~Coroutine() {
-}
-
 void Coroutine::Resume() {
   caller_context_.SwitchTo(context_);
   if (eptr_) {

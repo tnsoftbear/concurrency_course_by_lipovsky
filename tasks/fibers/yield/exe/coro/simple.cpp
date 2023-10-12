@@ -39,6 +39,7 @@ sure::Stack SimpleCoroutine::AllocateStack() {
 }
 
 void SimpleCoroutine::ReleaseResources() {
+  // Я хз, как правильно чистить ресурсы. Видел так сделано в await фреймворке.
   auto mmv = stack_.Release();
   sure::Stack::Acquire(mmv);
 }

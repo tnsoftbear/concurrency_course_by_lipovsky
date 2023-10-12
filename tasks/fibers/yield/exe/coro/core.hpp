@@ -28,8 +28,6 @@ class Coroutine : private sure::ITrampoline {
     IRunnable* runnable
   );
 
-  ~Coroutine();
-
   void Resume();
 
   // Suspend running coroutine
