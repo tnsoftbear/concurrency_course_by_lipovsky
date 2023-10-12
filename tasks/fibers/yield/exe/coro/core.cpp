@@ -22,17 +22,28 @@ Coroutine::Coroutine(
 }
 
 void Coroutine::Resume() {
-  caller_context_.SwitchTo(context_);
+  // We are here by Fiber::Schedule() -> Fiber::Run()
+  caller_context_.SwitchTo(context_); // Go to at 1st run in Coroutine::Run(); and at 2nd and later in Coroutine::Suspend() after SwitchTo().
+  // We are here by call of SwitchTo(caller_context_) in Coroutine::Suspend()
+  // and after by call of ExitTo(caller_context_) in Coroutine::Run()
   if (eptr_) {
     std::rethrow_exception(eptr_);
   }
 }
 
+/**
+ * Вызовом fibers::Yield() мы сохраним текущий RIP в context_,
+ * таким образом обеспечим продолжение исполнения после Yield()
+ * при следующем вызове Resume().
+ */
 void Coroutine::Suspend() {
-  context_.SwitchTo(caller_context_);
+  // We are here by fibers::Yield()
+  context_.SwitchTo(caller_context_); // Go to Couroutine::Resume() after SwitchTo()
+  // We are here by 2nd and later calls of SwitchTo(context_) in Coroutine::Resume()
 }
 
 void Coroutine::Run() noexcept {
+  // We are here by 1st call of SwitchTo(context_) in Coroutine::Resume()
   try {
     routine_();
   } catch (...) {
@@ -40,7 +51,7 @@ void Coroutine::Run() noexcept {
   }
 
   completed_ = true;
-  context_.ExitTo(caller_context_);
+  context_.ExitTo(caller_context_); // Go to Couroutine::Resume() after SwitchTo()
 
   WHEELS_UNREACHABLE();
 }

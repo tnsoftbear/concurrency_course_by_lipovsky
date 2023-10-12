@@ -11,7 +11,7 @@
 #include "exe/tp/submit.hpp"
 
 // 1] fibers::Go() -> new Fiber() + fiber->Schedule() 
-// 2] -> ThreadPool::Submit({ fiber->Run() }) // Go() ends, ThreadPool calls task() from queue in loop
+// 2] -> ThreadPool::Submit({ fiber->Run() }) -> exits from fibers::Go() -> ThreadPool calls task() from queue in loop
 // 3] fiber->Run() -> coroutine->Resume() // saves caller_context_
 // 4] -> switch execution to context_ with trampoline entry-point: coroutine->Run() -> routine_()
 // 5] routine_() does its job and calls fibers::Yield() -> fiber->Suspend() 
@@ -46,9 +46,11 @@ void Fiber::Run() {
   if (coro_->IsCompleted()) {
     delete coro_;
     delete this;
-  } else {
-    Schedule();
+    return;
   }
+  
+  // Schedule the next round of suspended execution after fibers::Yield() of routine
+  Schedule();
 }
 
 Fiber* Fiber::Self() {

@@ -31,6 +31,7 @@ int main() {
   for (size_t i = 0; i < 1; ++i) {
     fibers::Go(scheduler, [i] {
       for (size_t j = 0; j < 1; ++j) {
+        Ll("play::Routine#: %lu, Before yield#: %lu", i, j);
         fibers::Yield();
         Ll("play::Routine#: %lu, After yield#: %lu", i, j);
       }
