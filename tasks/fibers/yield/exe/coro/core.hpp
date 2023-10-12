@@ -6,7 +6,6 @@
 #include <function2/function2.hpp>
 
 #include <exception>
-// #include "sure/stack/mmap.hpp"
 #include <stack>
 
 #include <twist/ed/stdlike/mutex.hpp>
@@ -21,13 +20,6 @@ namespace exe::coro {
 
 void Ll(const char* format, ...);
 
-enum Status {
-  Runable = 0,
-  Running = 1,
-  Suspended = 2,
-  Completed = 3
-};
-
 class Coroutine : private sure::ITrampoline {
  public:
 
@@ -41,35 +33,25 @@ class Coroutine : private sure::ITrampoline {
   void Resume();
 
   // Suspend running coroutine
-  static void Suspend();
+  void Suspend();
 
   bool IsCompleted() const {
-    return GetStatus() == Status::Completed;
+    return completed_;
   }
 
   void Ll(const char* format, ...);
-
-  void SetStatus(Status status) {
-    status_.store(status);
-  }
-
-  Status GetStatus() const {
-    return status_.load();
-  }
 
  private:
   IRunnable* runnable_;
 
   sure::ExecutionContext context_;
   sure::ExecutionContext caller_context_;
-  atomic<Status> status_{Status::Runable};
-  std::exception_ptr eptr_;
-  atomic<size_t> id_{0};
+  std::exception_ptr eptr_{nullptr};
+  bool completed_{false};
 
  private:
   // ITrampoline
   void Run() noexcept override;
-  void SwitchToScheduler();
 };
 
 }  // namespace exe::coro

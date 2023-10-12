@@ -22,18 +22,10 @@ class SimpleCoroutine : private IRunnable {
   static void Suspend();
 
   bool IsCompleted() const {
-    return GetStatus() == Status::Completed;
+    return impl_.IsCompleted();
   }
 
   void Ll(const char* format, ...);
-
-  void SetStatus(Status status) {
-    impl_.SetStatus(status);
-  }
-
-  Status GetStatus() const {
-    return impl_.GetStatus();
-  }
 
  private:
   Routine routine_;

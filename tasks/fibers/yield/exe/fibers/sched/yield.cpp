@@ -1,3 +1,4 @@
+#include <chrono>
 #include <exe/fibers/sched/yield.hpp>
 #include <exe/fibers/sched/go.hpp>
 #include "exe/fibers/core/scheduler.hpp"
@@ -38,7 +39,8 @@ void Yield() {
     fiber->Schedule();
   });
 
-  coro::Coroutine::Suspend();
+  fiber->SetStatus(Status::Suspended);
+  coro::SimpleCoroutine::Suspend();
 }
 
 }  // namespace exe::fibers

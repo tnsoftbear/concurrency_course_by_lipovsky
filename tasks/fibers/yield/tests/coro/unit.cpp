@@ -215,22 +215,15 @@ TEST_SUITE(Coroutine) {
   struct MyException {};
 
   SIMPLE_TEST(Exception) {
-    printf("0]\n");
     Coroutine co([&] {
-      printf("r1]\n");
       Coroutine::Suspend();
-      printf("r2]\n");
       throw MyException{};
-      printf("r3]\n");
       Coroutine::Suspend();
     });
 
     ASSERT_FALSE(co.IsCompleted());
-    printf("1]\n");
     co.Resume();
-    printf("2]\n");
     ASSERT_THROW(co.Resume(), MyException);
-    printf("3]\n");
     ASSERT_TRUE(co.IsCompleted());
   }
 

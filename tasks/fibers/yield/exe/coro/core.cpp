@@ -1,12 +1,8 @@
 #include <exe/coro/core.hpp>
 
-#include <mutex>
-#include <twist/ed/local/var.hpp>
-
 #include <wheels/core/assert.hpp>
 #include <wheels/core/compiler.hpp>
 
-//#include "sure/context.hpp"
 #include "exe/coro/runnable.hpp"
 #include "sure/stack/mmap.hpp"
 #include "sure/trampoline.hpp"
@@ -15,9 +11,6 @@
 #include <exe/tp/thread_pool.hpp> // для константы exe::tp::kShouldPrint
 
 namespace exe::coro {
-
-static twist::ed::ThreadLocal<std::stack<Coroutine*>> coros;
-static mutex global_mutex;
 
 Coroutine::Coroutine(
   wheels::MutableMemView stack,
@@ -32,11 +25,6 @@ Coroutine::~Coroutine() {
 }
 
 void Coroutine::Resume() {
-  {
-    std::unique_lock guard(global_mutex); // проверить необходимость
-    coros->push(this);
-    SetStatus(Status::Running);
-  }
   caller_context_.SwitchTo(context_);
   if (eptr_) {
     std::rethrow_exception(eptr_);
@@ -44,17 +32,6 @@ void Coroutine::Resume() {
 }
 
 void Coroutine::Suspend() {
-  Coroutine* coro;
-  {
-    std::unique_lock guard(global_mutex); // проверить необходимость
-    coro = coros->top();
-    coros->pop();
-    coro->SetStatus(Status::Suspended);
-  }
-  coro->SwitchToScheduler();
-}
-
-void Coroutine::SwitchToScheduler() {
   context_.SwitchTo(caller_context_);
 }
 
@@ -65,11 +42,7 @@ void Coroutine::Run() noexcept {
     eptr_ = std::current_exception();
   }
 
-  {
-    std::unique_lock lock(global_mutex);
-    SetStatus(Status::Completed);
-    coros->pop();
-  }
+  completed_ = true;
   context_.ExitTo(caller_context_);
 
   WHEELS_UNREACHABLE();
@@ -83,7 +56,7 @@ void Coroutine::Ll(const char* format, ...) {
   char buf[250];
   std::ostringstream pid;
   pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
-  sprintf(buf, "%s Coroutine::%s, status: %lu, coro_: %p\n", pid.str().c_str(), format, (size_t)status_, (void*)this);
+  sprintf(buf, "%s Coroutine::%s, coro_: %p\n", pid.str().c_str(), format, (void*)this);
   va_list args;
   va_start(args, format);
   vprintf(buf, args);

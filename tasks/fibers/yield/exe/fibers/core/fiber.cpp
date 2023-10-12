@@ -35,6 +35,7 @@ Fiber::~Fiber() {
 
 void Fiber::Run() {
   current_fiber = this;
+  SetStatus(Status::Running);
   coro_->Resume();
 
   if (coro_->IsCompleted()) {
@@ -53,7 +54,7 @@ void Fiber::Schedule() {
 }
 
 bool Fiber::IsSuspended() const {
-  return coro_->GetStatus() == coro::Status::Suspended;
+  return GetStatus() == Status::Suspended;
 }
 
 void Fiber::Ll(const char* format, ...) {
