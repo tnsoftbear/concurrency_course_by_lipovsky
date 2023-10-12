@@ -18,6 +18,7 @@ using twist::ed::stdlike::atomic;
 
 namespace exe::coro {
 
+using Routine = fu2::unique_function<void()>;
 void Ll(const char* format, ...);
 
 class Coroutine : private sure::ITrampoline {
@@ -25,7 +26,7 @@ class Coroutine : private sure::ITrampoline {
 
   explicit Coroutine(
     wheels::MutableMemView stack,
-    IRunnable* runnable
+    Routine routine_
   );
 
   void Resume();
@@ -40,8 +41,8 @@ class Coroutine : private sure::ITrampoline {
   void Ll(const char* format, ...);
 
  private:
-  IRunnable* runnable_;
-
+  //IRunnable* runnable_;
+  Routine routine_;
   sure::ExecutionContext context_;
   sure::ExecutionContext caller_context_;
   std::exception_ptr eptr_{nullptr};

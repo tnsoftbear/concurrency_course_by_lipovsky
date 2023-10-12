@@ -25,12 +25,12 @@ void Ll(const char* format, ...) {
 }
 
 int main() {
-  tp::ThreadPool scheduler{/*threads=*/4};
+  tp::ThreadPool scheduler{/*threads=*/1};
   scheduler.Start();
 
-  for (size_t i = 0; i < 256; ++i) {
+  for (size_t i = 0; i < 1; ++i) {
     fibers::Go(scheduler, [i] {
-      for (size_t j = 0; j < 3; ++j) {
+      for (size_t j = 0; j < 1; ++j) {
         fibers::Yield();
         Ll("play::Routine#: %lu, After yield#: %lu", i, j);
       }

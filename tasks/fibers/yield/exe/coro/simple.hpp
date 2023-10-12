@@ -1,16 +1,12 @@
 #pragma once
 
 #include <exe/coro/core.hpp>
-#include <function2/function2.hpp>
-#include "exe/coro/runnable.hpp"
 
 namespace exe::coro {
 
 // Simple stackful coroutine
 
-using Routine = fu2::unique_function<void()>;
-
-class SimpleCoroutine : private IRunnable {
+class SimpleCoroutine/*  : private IRunnable */ {
  public:
   explicit SimpleCoroutine(Routine routine);
 
@@ -28,12 +24,12 @@ class SimpleCoroutine : private IRunnable {
   void Ll(const char* format, ...);
 
  private:
-  Routine routine_;
+  //Routine routine_;
   sure::Stack stack_;
   Coroutine impl_;
 
  private:
-  void RunCoro();
+  //void RunCoro();
   sure::Stack AllocateStack();
   void ReleaseResources();
 };

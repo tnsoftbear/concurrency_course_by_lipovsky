@@ -1,26 +1,18 @@
 #pragma once
 
-#include <exe/coro/simple.hpp>
+#include <exe/coro/core.hpp>
 #include <exe/fibers/core/routine.hpp>
 #include <exe/fibers/core/scheduler.hpp>
 
+using Routine = fu2::unique_function<void()>;
 
 namespace exe::fibers {
 
 // Fiber = stackful coroutine + scheduler (thread pool)
 
-enum Status {
-  Runable = 0,
-  Running = 1,
-  Suspended = 2,
-  Completed = 3
-};
-
 class Fiber {
  public:
   Fiber(Scheduler& scheduler, Routine routine);
-
-  ~Fiber();
 
   void Schedule();
 
@@ -30,24 +22,13 @@ class Fiber {
   static Fiber* Self();
 
   void Ll(const char* format, ...);
-  Scheduler& GetScheduler() {
-    return scheduler_;
-  };
-  bool IsSuspended() const;
-
-  void SetStatus(Status status) {
-    status_.store(status);
-  }
-
-  Status GetStatus() const {
-    return status_.load();
-  }
+  void Suspend();
 
  private:
   Scheduler& scheduler_;
-  coro::SimpleCoroutine* coro_;
-  atomic<Status> status_{Status::Runable};
-
+  sure::Stack stack_;
+  coro::Coroutine* coro_;
+  //Routine routine_;
 };
 
 }  // namespace exe::fibers

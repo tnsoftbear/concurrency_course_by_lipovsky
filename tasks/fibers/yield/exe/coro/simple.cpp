@@ -10,9 +10,9 @@ namespace exe::coro {
 static twist::ed::ThreadLocalPtr<SimpleCoroutine> current;
 
 SimpleCoroutine::SimpleCoroutine(Routine routine)
-: routine_(std::move(routine))
-, stack_(AllocateStack())
-, impl_(stack_.MutView(), this) {}
+//: routine_(std::move(routine))
+: stack_(AllocateStack())
+, impl_(stack_.MutView(), std::move(routine)) {}
 
 SimpleCoroutine::~SimpleCoroutine() {
   ReleaseResources();
@@ -44,8 +44,8 @@ void SimpleCoroutine::ReleaseResources() {
   sure::Stack::Acquire(mmv);
 }
 
-void SimpleCoroutine::RunCoro() {
-  routine_();
-}
+// void SimpleCoroutine::RunCoro() {
+//   routine_();
+// }
 
 }  // namespace exe::coro

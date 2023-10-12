@@ -14,9 +14,9 @@ namespace exe::coro {
 
 Coroutine::Coroutine(
   wheels::MutableMemView stack,
-  IRunnable* runnable
+  Routine routine
 )
-  : runnable_(runnable)
+  : routine_(std::move(routine))
 {
   context_.Setup(stack, this);
 }
@@ -34,7 +34,7 @@ void Coroutine::Suspend() {
 
 void Coroutine::Run() noexcept {
   try {
-    runnable_->RunCoro();
+    routine_();
   } catch (...) {
     eptr_ = std::current_exception();
   }
