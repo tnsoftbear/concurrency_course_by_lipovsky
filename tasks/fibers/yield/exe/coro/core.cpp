@@ -18,7 +18,7 @@ Coroutine::Coroutine(
 )
   : routine_(std::move(routine))
 {
-  context_.Setup(stack, this);
+  context_.Setup(stack, this);  // Initialize trampoline entry-point by this::Run()
 }
 
 void Coroutine::Resume() {
