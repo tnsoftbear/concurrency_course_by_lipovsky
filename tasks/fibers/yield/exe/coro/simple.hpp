@@ -6,7 +6,7 @@ namespace exe::coro {
 
 // Simple stackful coroutine
 
-class SimpleCoroutine/*  : private IRunnable */ {
+class SimpleCoroutine {
  public:
   explicit SimpleCoroutine(Routine routine);
 
@@ -24,12 +24,10 @@ class SimpleCoroutine/*  : private IRunnable */ {
   void Ll(const char* format, ...);
 
  private:
-  //Routine routine_;
   sure::Stack stack_;
   Coroutine impl_;
 
  private:
-  //void RunCoro();
   sure::Stack AllocateStack();
   void ReleaseResources();
 };

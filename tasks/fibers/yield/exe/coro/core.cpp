@@ -3,14 +3,14 @@
 #include <wheels/core/assert.hpp>
 #include <wheels/core/compiler.hpp>
 
-#include "exe/coro/runnable.hpp"
 #include "sure/stack/mmap.hpp"
 #include "sure/trampoline.hpp"
 
 #include <twist/ed/stdlike/thread.hpp>  // for debug logs
-#include <exe/tp/thread_pool.hpp> // для константы exe::tp::kShouldPrint
 
 namespace exe::coro {
+
+const bool kShouldPrint = false;
 
 Coroutine::Coroutine(
   wheels::MutableMemView stack,
@@ -57,7 +57,7 @@ void Coroutine::Run() noexcept {
 }
 
 void Coroutine::Ll(const char* format, ...) {
-  if (!exe::tp::kShouldPrint) {
+  if (!kShouldPrint) {
     return;
   }
 

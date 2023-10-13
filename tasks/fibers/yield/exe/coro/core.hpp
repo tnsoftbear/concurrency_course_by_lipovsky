@@ -10,7 +10,6 @@
 
 #include <twist/ed/stdlike/mutex.hpp>
 #include <twist/ed/stdlike/atomic.hpp>
-#include "exe/coro/runnable.hpp"
 #include "sure/trampoline.hpp"
 
 using twist::ed::stdlike::mutex;
@@ -19,14 +18,13 @@ using twist::ed::stdlike::atomic;
 namespace exe::coro {
 
 using Routine = fu2::unique_function<void()>;
-void Ll(const char* format, ...);
 
 class Coroutine : private sure::ITrampoline {
  public:
 
   explicit Coroutine(
     wheels::MutableMemView stack,
-    Routine routine_
+    Routine routine
   );
 
   void Resume();

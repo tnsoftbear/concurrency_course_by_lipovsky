@@ -1,5 +1,4 @@
 #include <exe/coro/simple.hpp>
-#include <exe/coro/core.hpp>
 #include <twist/ed/local/ptr.hpp>
 #include <wheels/core/defer.hpp>
 
@@ -10,12 +9,10 @@ namespace exe::coro {
 static twist::ed::ThreadLocalPtr<SimpleCoroutine> current;
 
 SimpleCoroutine::SimpleCoroutine(Routine routine)
-: routine_(std::move(routine))
-, stack_(AllocateStack())
-, impl_(stack_.MutView(), this) {}
+  : stack_(AllocateStack())
+  , impl_(stack_.MutView(), std::move(routine)) {}
 
 SimpleCoroutine::~SimpleCoroutine() {
-  //Ll("~SimpleCoroutine()");
   ReleaseResources();
 }
 
@@ -40,12 +37,9 @@ sure::Stack SimpleCoroutine::AllocateStack() {
 }
 
 void SimpleCoroutine::ReleaseResources() {
+  // Я хз, как правильно чистить ресурсы. Видел так сделано в await фреймворке.
   auto mmv = stack_.Release();
   sure::Stack::Acquire(mmv);
-}
-
-void SimpleCoroutine::RunCoro() {
-  routine_();
 }
 
 }  // namespace exe::coro

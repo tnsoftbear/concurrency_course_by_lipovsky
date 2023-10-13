@@ -1,9 +1,10 @@
 #pragma once
 
+#include <exe/coro/core.hpp>
 #include <exe/fibers/core/routine.hpp>
 #include <exe/fibers/core/scheduler.hpp>
 
-#include <exe/coro/core.hpp>
+using Routine = fu2::unique_function<void()>;
 
 namespace exe::fibers {
 
@@ -11,6 +12,8 @@ namespace exe::fibers {
 
 class Fiber {
  public:
+  Fiber(Scheduler& scheduler, Routine routine);
+
   void Schedule();
 
   // Task
@@ -18,8 +21,13 @@ class Fiber {
 
   static Fiber* Self();
 
+  void Ll(const char* format, ...);
+  void Suspend();
+
  private:
-  // ???
+  Scheduler& scheduler_;
+  sure::Stack stack_;
+  coro::Coroutine* coro_;
 };
 
 }  // namespace exe::fibers
