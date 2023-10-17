@@ -5,18 +5,21 @@
 #include "asio/detail/chrono.hpp"
 #include "exe/fibers/sched/yield.hpp"
 #include <exe/fibers/core/fiber.hpp>
+#include <asio/defer.hpp>
 
 namespace exe::fibers {
 
 void SleepFor(Millis delay) {
   auto fiber = Fiber::Self();
-  fiber->Sleep();
+  fiber->MarkSleep();
   asio::steady_timer t(
-    exe::fibers::GetCurrent(),
+    fiber->GetScheduler(),
     asio::chrono::milliseconds(delay)
   );
-  t.async_wait([fiber](const asio::error_code) {
-    fiber->Wake();
+  asio::defer(fiber->GetScheduler(), [fiber, &t]() {
+    t.async_wait([fiber](const asio::error_code) {
+      fiber->Wake();
+    });
   });
   exe::fibers::Yield();
 }

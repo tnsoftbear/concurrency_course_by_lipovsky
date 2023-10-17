@@ -3,6 +3,7 @@
 
 namespace exe::fibers {
 
+
 void Go(Scheduler& scheduler, Routine routine) {
   fibers::Fiber* fiber = new fibers::Fiber(scheduler, std::move(routine));
   fiber->Schedule();

@@ -29,20 +29,25 @@ Fiber::Fiber(Scheduler& scheduler, Routine routine)
 }
 
 Fiber::~Fiber() {
+  Ll("~Fiber()");
   delete coro_;
 }
 
 void Fiber::Run() {
   current_fiber = this;
   status_ = Status::Running;
+  Ll("Run(): before Resume()");
   coro_->Resume();
+  Ll("Run(): after Resume()");
   
   if (coro_->IsCompleted()) {
+    Ll("Run: before delete this;");
     delete this;
     return;
   }
   
   if (status_ == Status::Sleeping) {
+    Ll("Run: return; because sleeping");
     return;
   }
   
@@ -51,10 +56,12 @@ void Fiber::Run() {
 }
 
 void Fiber::MarkSleep() {
+  Ll("Sleep");
   status_ = Status::Sleeping;
 }
 
 void Fiber::Wake() {
+  Ll("Wake");
   status_ = Status::Runnable;
   Run(); 
 }
@@ -64,11 +71,14 @@ Fiber* Fiber::Self() {
 }
 
 void Fiber::Schedule() {
+  Ll("Schedule: start");
   exe::fibers::Submit(scheduler_, [&]() { Run(); });
 }
 
 void Fiber::Suspend() {
+  Ll("Suspend(): start");
   coro_->Suspend();
+  Ll("Suspend(): end");
 }
 
 void Fiber::Ll(const char* format, ...) {

@@ -16,16 +16,17 @@ class Fiber {
   ~Fiber();
 
   void Schedule();
-
-  // Task
   void Run();
-  void Sleep();
-  void Wake();
-
   static Fiber* Self();
 
-  void Ll(const char* format, ...);
+  void MarkSleep();
+  void Wake();
   void Suspend();
+  void Ll(const char* format, ...);
+
+  Scheduler& GetScheduler() {
+    return scheduler_;
+  }
 
  public:
    enum Status {
