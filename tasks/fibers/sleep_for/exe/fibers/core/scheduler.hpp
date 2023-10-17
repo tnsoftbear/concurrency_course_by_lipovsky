@@ -6,4 +6,11 @@ namespace exe::fibers {
 
 using Scheduler = asio::io_context;
 
-}  // namespace exe::fibers
+Scheduler& GetCurrent();
+
+void SetCurrent(Scheduler& scheduler);
+
+template <typename F>
+void Submit(Scheduler& scheduler, F&& fun);
+
+}

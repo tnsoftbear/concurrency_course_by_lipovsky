@@ -20,9 +20,11 @@ TEST_SUITE(Yield) {
 
   SIMPLE_TEST(PingPong) {
     RunScheduler(/*threads=*/1, [] {
+      Ll("PingPong: Routine of RunScheduler start");
       size_t step = 0;
 
       fibers::Go([&] {
+        Ll("PingPong: Start fibers::Go([&] { ");
         for (size_t j = 1; j < 7; ++j) {
           step = j;
           fibers::Yield();

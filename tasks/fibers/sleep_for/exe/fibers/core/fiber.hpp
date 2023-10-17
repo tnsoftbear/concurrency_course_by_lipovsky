@@ -13,21 +13,33 @@ namespace exe::fibers {
 class Fiber {
  public:
   Fiber(Scheduler& scheduler, Routine routine);
+  ~Fiber();
 
   void Schedule();
 
   // Task
   void Run();
+  void Sleep();
+  void Wake();
 
   static Fiber* Self();
 
   void Ll(const char* format, ...);
   void Suspend();
 
+ public:
+   enum Status {
+    Runnable = 0,
+    Running = 1,
+    Sleeping = 2,
+  };
+
  private:
   Scheduler& scheduler_;
   sure::Stack stack_;
   coro::Coroutine* coro_;
+  Status status_{Status::Runnable};
+  size_t id_{0};
 };
 
 }  // namespace exe::fibers

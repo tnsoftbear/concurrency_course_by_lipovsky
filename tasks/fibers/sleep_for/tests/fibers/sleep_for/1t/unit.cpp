@@ -52,6 +52,7 @@ TEST_SUITE(SleepForOneThread) {
     bool done = false;
 
     fibers::Go(scheduler, [&done] {
+      printf("Routine: start\n");
       fibers::SleepFor(200ms);
       done = true;
     });

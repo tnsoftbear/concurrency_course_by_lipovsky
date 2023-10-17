@@ -1,20 +1,21 @@
-#include <cstddef>
 #include <exe/fibers/core/fiber.hpp>
-#include <exe/coro/core.hpp>
+#include <cstddef>
 
 #include <memory>
 #include <mutex>
 #include <twist/ed/local/ptr.hpp>
 
 #include <map>
-#include <exe/fibers/core/scheduler.hpp>
-#include "exe/tp/submit.hpp"
+
+#include <twist/ed/stdlike/thread.hpp>
+#include <exe/fibers/core/scheduler.cpp>
 
 namespace exe::fibers {
 
 const bool kShouldPrint = false;
 
 static twist::ed::ThreadLocalPtr<Fiber> current_fiber = nullptr;
+static size_t fiber_id = 0;
 
 Fiber::Fiber(Scheduler& scheduler, Routine routine)
   : scheduler_(scheduler)
@@ -22,16 +23,27 @@ Fiber::Fiber(Scheduler& scheduler, Routine routine)
   , coro_(std::move(
     new coro::Coroutine(stack_.MutView(), std::move(routine))
   ))
+  , id_(++fiber_id)
 {
+}
+
+Fiber::~Fiber() {
+  delete coro_;
 }
 
 void Fiber::Run() {
   current_fiber = this;
+  status_ = Status::Running;
+  Ll("Run(): before Resume()");
   coro_->Resume();
+  Ll("Run(): after Resume()");
   
   if (coro_->IsCompleted()) {
-    delete coro_;
     delete this;
+    return;
+  }
+  
+  if (status_ == Status::Sleeping) {
     return;
   }
   
@@ -39,16 +51,27 @@ void Fiber::Run() {
   Schedule();
 }
 
+void Fiber::Sleep() {
+  status_ = Status::Sleeping;
+}
+
+void Fiber::Wake() {
+  status_ = Status::Runnable;
+  Run();
+}
+
 Fiber* Fiber::Self() {
   return current_fiber;
 }
 
 void Fiber::Schedule() {
-  //exe::tp::Submit(scheduler_, [&]() { Run(); });
+  exe::fibers::Submit(scheduler_, [&]() { Run(); });
 }
 
 void Fiber::Suspend() {
+  Ll("Suspend(): start");
   coro_->Suspend();
+  Ll("Suspend(): end");
 }
 
 void Fiber::Ll(const char* format, ...) {
@@ -59,7 +82,7 @@ void Fiber::Ll(const char* format, ...) {
   char buf [250];
   std::ostringstream pid;
   pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
-  sprintf(buf, "%s Fiber::%s, this: %p, coro_: %p\n", pid.str().c_str(), format, (void*)this, (void*)coro_);
+  sprintf(buf, "%s Fiber::%s, id: %lu, st: %d, this: %p, coro_: %p\n", pid.str().c_str(), format, id_, status_, (void*)this, (void*)coro_);
   va_list args;
   va_start(args, format);
   vprintf(buf, args);

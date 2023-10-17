@@ -22,6 +22,7 @@ Coroutine::Coroutine(
 }
 
 void Coroutine::Resume() {
+  Ll("Resume: start");
   // We are here by Fiber::Schedule() -> Fiber::Run()
   caller_context_.SwitchTo(context_); // Go to at 1st run in Coroutine::Run(); and at 2nd and later in Coroutine::Suspend() after SwitchTo().
   // We are here by call of SwitchTo(caller_context_) in Coroutine::Suspend()
@@ -29,6 +30,7 @@ void Coroutine::Resume() {
   if (eptr_) {
     std::rethrow_exception(eptr_);
   }
+  Ll("Resume: end");
 }
 
 /**
@@ -37,12 +39,15 @@ void Coroutine::Resume() {
  * при следующем вызове Resume().
  */
 void Coroutine::Suspend() {
+  Ll("Suspend: start");
   // We are here by fibers::Yield()
   context_.SwitchTo(caller_context_); // Go to Couroutine::Resume() after SwitchTo()
   // We are here by 2nd and later calls of SwitchTo(context_) in Coroutine::Resume()
+  Ll("Suspend: end");
 }
 
 void Coroutine::Run() noexcept {
+  Ll("Run: start");
   // We are here by 1st call of SwitchTo(context_) in Coroutine::Resume()
   try {
     routine_();
