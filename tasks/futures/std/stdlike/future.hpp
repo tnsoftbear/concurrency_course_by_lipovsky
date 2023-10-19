@@ -1,7 +1,10 @@
 #pragma once
 
+#include <exception>
 #include <memory>
 #include <cassert>
+
+#include <stdlike/shared_state.hpp>
 
 namespace stdlike {
 
@@ -22,15 +25,15 @@ class Future {
   // One-shot
   // Wait for result (value or exception)
   T Get() {
-    throw std::runtime_error("Not implemented");
+    return ss_->Get();
   }
 
  private:
-  Future(/*???*/) {
+  explicit Future(std::shared_ptr<SharedState<T>> ss) : ss_(ss) {
   }
 
  private:
-  // ???
+  std::shared_ptr<SharedState<T>> ss_;
 };
 
 }  // namespace stdlike
