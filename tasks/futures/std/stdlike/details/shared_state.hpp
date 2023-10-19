@@ -19,7 +19,6 @@ class SharedState {
       return v_.index() != 0; 
     });
 
-    //if (std::holds_alternative<std::exception_ptr>(v_)) {
     if (v_.index() == 2) {
         auto eptr = std::move(std::get<2>(v_));
         std::rethrow_exception(eptr);
@@ -30,16 +29,16 @@ class SharedState {
 
   void SetValue(T value) {
     {
-      std::lock_guard<mutex> guard(*mtx_);
       v_.template emplace<1>(std::move(value));
+      std::lock_guard<mutex> guard(*mtx_);
     }
     readiness_cv_.notify_one();
   }
 
   void SetException(std::exception_ptr expt) {
     {
-      std::lock_guard<mutex> guard(*mtx_);
       v_.template emplace<2>(std::move(expt));
+      std::lock_guard<mutex> guard(*mtx_);
     }
     readiness_cv_.notify_one();
   }
@@ -52,3 +51,24 @@ class SharedState {
 
 }  // namespace details
 }  // namespace stdlike
+
+
+/**
+ * Забавно, что следующие варианты тоже рабочие:
+
+  void SetValue(T value) {
+    v_.template emplace<1>(std::move(value));
+    {
+      std::lock_guard<mutex> guard(*mtx_);
+      readiness_cv_.notify_one();
+    }
+  }
+
+  void SetValue(T value) {
+    v_.template emplace<1>(std::move(value));
+    {
+      std::lock_guard<mutex> guard(*mtx_);
+    }
+    readiness_cv_.notify_one();
+  }
+*/

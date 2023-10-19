@@ -31,10 +31,6 @@ class Promise {
     ss_->SetValue(std::move(value));
   }
 
-  T GetValue() {
-    return ss_->Get();
-  }
-
   // One-shot
   // Fulfill promise with exception
   void SetException(std::exception_ptr expt) {
