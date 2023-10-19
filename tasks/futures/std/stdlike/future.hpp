@@ -1,12 +1,10 @@
 #pragma once
 
-#include <exception>
-#include <memory>
-#include <cassert>
-
-#include <stdlike/shared_state.hpp>
+#include <stdlike/details/shared_state.hpp>
 
 namespace stdlike {
+
+using stdlike::details::SharedState;
 
 template <typename T>
 class Future {

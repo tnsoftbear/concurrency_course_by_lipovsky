@@ -1,14 +1,10 @@
 #pragma once
 
-// #include <memory>
-// #include <cassert>
-
-#include <mutex>
 #include <twist/ed/stdlike/mutex.hpp>
 #include <twist/ed/stdlike/condition_variable.hpp>
 
-#include <exception>
 namespace stdlike {
+namespace details {
 
 using twist::ed::stdlike::mutex;
 using twist::ed::stdlike::condition_variable;
@@ -54,4 +50,5 @@ class SharedState {
   condition_variable readiness_cv_;
 };
 
+}  // namespace details
 }  // namespace stdlike

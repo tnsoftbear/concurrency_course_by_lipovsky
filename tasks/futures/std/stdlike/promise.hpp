@@ -1,18 +1,16 @@
 #pragma once
 
 #include <stdlike/future.hpp>
-#include <memory>
-
-#include <stdlike/shared_state.hpp>
+#include <stdlike/details/shared_state.hpp>
 
 namespace stdlike {
+
+using stdlike::details::SharedState;
 
 template <typename T>
 class Promise {
  public:
-  Promise() {
-    //ss_ = std::make_shared<SharedState<T>>();
-  }
+  Promise() {}
 
   // Non-copyable
   Promise(const Promise&) = delete;
@@ -24,8 +22,7 @@ class Promise {
 
   // One-shot
   Future<T> MakeFuture() {
-    Future<T> future(ss_);
-    return future;
+    return Future<T>(ss_);
   }
 
   // One-shot
