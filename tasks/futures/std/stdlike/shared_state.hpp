@@ -20,21 +20,22 @@ class SharedState {
   T Get() {
     std::unique_lock<mutex> lock(*mtx_);
     readiness_cv_.wait(lock, [this] { 
-      return !std::holds_alternative<std::monostate>(v_); 
+      return v_.index() != 0; 
     });
 
-    if (std::holds_alternative<std::exception_ptr>(v_)) {
-        auto eptr = std::get<std::exception_ptr>(v_);
+    //if (std::holds_alternative<std::exception_ptr>(v_)) {
+    if (v_.index() == 2) {
+        auto eptr = std::move(std::get<2>(v_));
         std::rethrow_exception(eptr);
     } else {
-        return std::get<T>(v_);
+        return std::move(std::get<1>(v_));
     }
   }
 
   void SetValue(T value) {
     {
       std::lock_guard<mutex> guard(*mtx_);
-      v_ = value;
+      v_.template emplace<1>(std::move(value));
     }
     readiness_cv_.notify_one();
   }
@@ -42,7 +43,7 @@ class SharedState {
   void SetException(std::exception_ptr expt) {
     {
       std::lock_guard<mutex> guard(*mtx_);
-      v_ = expt;
+      v_.template emplace<2>(std::move(expt));
     }
     readiness_cv_.notify_one();
   }
