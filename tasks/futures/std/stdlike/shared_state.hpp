@@ -3,6 +3,7 @@
 // #include <memory>
 // #include <cassert>
 
+#include <mutex>
 #include <twist/ed/stdlike/mutex.hpp>
 #include <twist/ed/stdlike/condition_variable.hpp>
 
@@ -31,12 +32,18 @@ class SharedState {
   }
 
   void SetValue(T value) {
-    v_ = value;
+    {
+      std::lock_guard<mutex> guard(*mtx_);
+      v_ = value;
+    }
     readiness_cv_.notify_one();
   }
 
   void SetException(std::exception_ptr expt) {
-    v_ = expt;
+    {
+      std::lock_guard<mutex> guard(*mtx_);
+      v_ = expt;
+    }
     readiness_cv_.notify_one();
   }
 

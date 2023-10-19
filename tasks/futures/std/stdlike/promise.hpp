@@ -31,7 +31,7 @@ class Promise {
   // One-shot
   // Fulfill promise with value
   void SetValue(T value) {
-    ss_->SetValue(value);
+    ss_->SetValue(std::move(value));
   }
 
   T GetValue() {
@@ -41,7 +41,7 @@ class Promise {
   // One-shot
   // Fulfill promise with exception
   void SetException(std::exception_ptr expt) {
-    ss_->SetException(expt);
+    ss_->SetException(std::move(expt));
   }
 
  private:
