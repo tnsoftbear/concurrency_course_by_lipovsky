@@ -1,21 +1,28 @@
 #pragma once
 
+#include <twist/ed/stdlike/atomic.hpp>
+#include <twist/ed/wait/spin.hpp>
+
 namespace exe::threads {
+
+using twist::ed::stdlike::atomic;
 
 // Test-and-TAS spinlock
 
 class SpinLock {
  public:
   void Lock() {
-    // Not implemented
+    while (locked_.exchange(true)) {
+      twist::ed::CpuRelax();
+    }
   }
 
   bool TryLock() {
-    return false;  // Not implemented
+    return !locked_.exchange(true);
   }
 
   void Unlock() {
-    // Not implemented
+    locked_.store(false);
   }
 
   // Lockable
@@ -33,7 +40,7 @@ class SpinLock {
   }
 
  private:
-  // ???
+  atomic<bool> locked_{false};
 };
 
 }  // namespace exe::threads

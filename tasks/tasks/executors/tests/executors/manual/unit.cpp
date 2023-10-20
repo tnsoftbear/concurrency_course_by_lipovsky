@@ -8,7 +8,6 @@ using namespace exe;
 TEST_SUITE(Manual) {
   SIMPLE_TEST(JustWorks) {
     executors::ManualExecutor manual;
-
     size_t step = 0;
 
     ASSERT_TRUE(manual.IsEmpty());
@@ -16,7 +15,6 @@ TEST_SUITE(Manual) {
 
     ASSERT_FALSE(manual.RunNext());
     ASSERT_EQ(manual.RunAtMost(99), 0);
-
     executors::Submit(manual, [&] {
       step = 1;
     });
@@ -26,7 +24,6 @@ TEST_SUITE(Manual) {
     ASSERT_EQ(manual.TaskCount(), 1);
 
     ASSERT_EQ(step, 0);
-
     executors::Submit(manual, [&] {
       step = 2;
     });
@@ -42,7 +39,6 @@ TEST_SUITE(Manual) {
     ASSERT_FALSE(manual.IsEmpty());
     ASSERT_TRUE(manual.NonEmpty());
     ASSERT_EQ(manual.TaskCount(), 1);
-
     executors::Submit(manual, [&] {
       step = 3;
     });
@@ -51,7 +47,6 @@ TEST_SUITE(Manual) {
 
     ASSERT_EQ(manual.RunAtMost(99), 2);
     ASSERT_EQ(step, 3);
-
     ASSERT_TRUE(manual.IsEmpty());
     ASSERT_FALSE(manual.NonEmpty());
     ASSERT_FALSE(manual.RunNext());

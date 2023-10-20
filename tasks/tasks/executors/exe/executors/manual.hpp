@@ -2,6 +2,8 @@
 
 #include <exe/executors/executor.hpp>
 
+#include <exe/support/queue.hpp>
+
 namespace exe::executors {
 
 // Single-threaded task queue
@@ -38,11 +40,11 @@ class ManualExecutor : public IExecutor {
   size_t Drain();
 
   size_t TaskCount() const {
-    return 0;  // Not implemented
+    return tasks_.Count();
   }
 
   bool IsEmpty() const {
-    return true;  // Not implemented
+    return tasks_.IsEmpty();
   }
 
   bool NonEmpty() const {
@@ -50,7 +52,7 @@ class ManualExecutor : public IExecutor {
   }
 
  private:
-  // ???
+  exe::support::UnboundedBlockingQueue<Task> tasks_;
 };
 
 }  // namespace exe::executors

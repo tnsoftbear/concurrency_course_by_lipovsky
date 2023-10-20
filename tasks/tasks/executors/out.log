@@ -1,0 +1,336 @@
+[  6%] Built target backward
+[  6%] Built target fmt
+[ 12%] Built target gflags_nothreads_static
+[ 43%] Built target wheels
+[ 50%] Built target sure
+[100%] Built target twist
+[100%] Built target course-test
+[100%] Built target task_tasks_executors_exe
+[100%] Built target task_tasks_executors_strand_stress_tests
+Compiler: Ubuntu Clang 14.0.6
+Run tests in subprocesses (set --disable_forks flag to disable forks)
+--------------------------------------------------------------------------------
+Test 'Robots_1' from suite 'Strand' is running...
+Executed in subprocess with pid = 3752831
+Seed for deterministic simulation: 8689845708525647736
+[38;2;255;000;000mDeadlock detected in fiber scheduler: 35 fibers blocked
+[0mSeed: 8689845708525647736, steps: 3828699
+
+[38;2;255;000;255mFiber #1[0m blocked at [38;2;255;000;000mfutex
+[0m#4 WaitGroup::Wait() [0x55dca20dd00b]
+  50:       Ll("WG-WAIT: before wait");
+> 51:       twist::ed::futex::Wait(done_, 0);
+  52:       Ll("WG-WAIT: after wait");
+
+#5 Robots(unsigned long, unsigned long) [0x55dca209ea37]
+  65:     clients.WaitIdle();
+> 66:     workers.WaitIdle();
+  67:   }
+
+#6 TestSuiteStrand::TwistTestRoutineRobots_1() [0x55dca209f525]
+  107:   TWIST_TEST(Robots_1, 5s) {
+> 108:     Robots(30, 30);
+  109:   }
+
+------------------------------
+
+[38;2;255;000;255mFiber #2[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20da586]
+  24:     while (!tasks_.IsEmpty()) {
+> 25:       processing_tasks.Put(tasks_.Take().value());
+  26:     }
+
+#8 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #3[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #4[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #5[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #6[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #7[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #8[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #9[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #10[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #11[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #12[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #13[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #14[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #15[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #16[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #17[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #18[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #19[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #20[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #21[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #22[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #23[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #24[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #25[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #26[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #27[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #28[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #29[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #30[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #31[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #32[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #33[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #34[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+[38;2;255;000;255mFiber #35[0m blocked at [38;2;255;000;000mcondition_variable::wait
+[0m#5 operator() [0x55dca20dcbde]
+  38:     workers_.emplace_back([this]() {
+> 39:       WorkerRoutine();
+  40:     });
+
+------------------------------
+
+REPORT END
+
+Test 'Robots_1' FAILED ヽ(｀⌒´)ﾉ: Test subprocess terminated by signal 6, stderr: Panicked at /tmp/clippy-build/FaultyFibers/_deps/twist-src/twist/rt/layer/fiber/runtime/scheduler.cpp:void twist::rt::fiber::Scheduler::ReportDeadlockAndDie()[Line 334]: Deadlock detected
+
+--------------------------------------------------------------------------------
+Good night, manjaro!
+
+Command running: ['target', 'strand_stress_tests', 'FaultyFibers'], cwd: /workspace/concurrency-course/tasks/tasks/executors
+Time: 2023-10-21 00:29:47
+Platform: Linux-6.1.53-1-MANJARO-x86_64-with-glibc2.29
+Python: 3.8.10, CPython, /workspace/concurrency-course/client/venv/bin/python
+C++ compiler: /usr/bin/clang++-14 (Ubuntu clang version 14.0.6)
+Repository root directory: /workspace/concurrency-course
+Git commit: cbddcad1644f9a6e76a44364d4a6631a4a07787a
+
+Build target strand_stress_tests in profile FaultyFibers
+
+make output:
+
+Run target strand_stress_tests with arguments []
+
+/tmp/clippy-build/FaultyFibers/tasks/tasks/executors/bin/task_tasks_executors_strand_stress_tests output:
+Command '['/tmp/clippy-build/FaultyFibers/tasks/tasks/executors/bin/task_tasks_executors_strand_stress_tests']' died with <Signals.SIGABRT: 6>.

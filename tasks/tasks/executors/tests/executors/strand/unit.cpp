@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <exe/executors/thread_pool.hpp>
 #include <exe/executors/strand.hpp>
 #include <exe/executors/manual.hpp>
@@ -15,6 +16,24 @@ using namespace std::chrono_literals;
 
 void AssertRunningOn(executors::ThreadPool& pool) {
   ASSERT_TRUE(executors::ThreadPool::Current() == &pool);
+}
+
+//const bool kShouldPrint = true;
+ const bool kShouldPrint = false;
+
+void Ll(const char* format, ...) {
+  if (!kShouldPrint) {
+    return;
+  }
+
+  char buf [250];
+  std::ostringstream pid;
+  pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+  sprintf(buf, "%s Test::%s\n", pid.str().c_str(), format);
+  va_list args;
+  va_start(args, format);
+  vprintf(buf, args);
+  va_end(args);
 }
 
 TEST_SUITE(Strand) {
@@ -96,12 +115,14 @@ TEST_SUITE(Strand) {
     for (size_t i = 0; i < kTasks; ++i) {
       executors::Submit(strand, [&, i] {
         AssertRunningOn(pool);
+        //Ll("Done: %lu, i: %lu", done, i);
         ASSERT_EQ(done++, i);
       });
     };
 
     pool.WaitIdle();
 
+    //Ll("Done: %lu, kTasks: %lu", done, kTasks);
     ASSERT_EQ(done, kTasks);
 
     pool.Stop();
@@ -132,6 +153,7 @@ TEST_SUITE(Strand) {
     executors::ThreadPool pool{16};
     pool.Start();
 
+//    static const size_t kStrands = 50;
     static const size_t kStrands = 50;
 
     std::deque<Robot> robots;
@@ -139,12 +161,15 @@ TEST_SUITE(Strand) {
       robots.emplace_back(pool);
     }
 
+    // static const size_t kPushes = 25;
+    // static const size_t kIterations = 25;
     static const size_t kPushes = 25;
     static const size_t kIterations = 25;
 
     for (size_t i = 0; i < kIterations; ++i) {
       for (size_t j = 0; j < kStrands; ++j) {
         for (size_t k = 0; k < kPushes; ++k) {
+          //Ll("Iterations i: %lu, Strands j: %lu, Pushes k: %lu", i, j, k);
           robots[j].Push();
         }
       }
@@ -153,6 +178,7 @@ TEST_SUITE(Strand) {
     pool.WaitIdle();
 
     for (size_t i = 0; i < kStrands; ++i) {
+      //Ll("i: %lu, Steps: %lu, kPushes * kIterations: %lu", i, robots[i].Steps(), kPushes * kIterations);
       ASSERT_EQ(robots[i].Steps(), kPushes * kIterations);
     }
 
@@ -257,25 +283,42 @@ TEST_SUITE(Strand) {
     executors::Strand strand{pool};
 
     executors::Submit(pool, [] {
+      Ll("before sleep_for(1s)");
       std::this_thread::sleep_for(1s);
     });
 
     std::atomic<bool> stop_requested{false};
 
-    auto snooze = []() {
-      std::this_thread::sleep_for(10ms);
-    };
+    // auto snooze = []() {
+    //   Ll("before sleep_for(10ms)");
+    //   std::this_thread::sleep_for(10ms);
+    // };
 
     for (size_t i = 0; i < 100; ++i) {
-      executors::Submit(strand, snooze);
+      Ll("i: %lu", i);
+      //executors::Submit(strand, snooze);
+      Ll("Submitted snooze for i: %lu", i);
+      executors::Submit(strand, [i]() {
+        std::this_thread::sleep_for(10ms);
+        Ll("Completed snooze for i: %lu", i);
+      });
     }
 
+    Ll("Submitted stop_requested.store(true)");
     executors::Submit(pool, [&stop_requested] {
+      Ll("stop_requested.store(true)");
       stop_requested.store(true);
     });
 
+    size_t j = 0;
     while (!stop_requested.load()) {
-      executors::Submit(strand, snooze);
+      j++;
+      Ll("Submitted snooze for j: %lu", j);
+      //executors::Submit(strand, snooze);
+      executors::Submit(strand, [j]() {
+        std::this_thread::sleep_for(10ms);
+        Ll("Completed snooze for j: %lu", j);
+      });
       std::this_thread::sleep_for(10ms);
     }
 
