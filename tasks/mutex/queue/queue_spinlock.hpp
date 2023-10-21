@@ -39,18 +39,18 @@ class QueueSpinLock {
 
    public:
     explicit Guard(QueueSpinLock& host)
-        : host(host) {
-      host.Acquire(this);
+        : host_(host) {
+      host_.Acquire(this);
     }
 
     ~Guard() {
-      host.Release(this);
+      host_.Release(this);
     }
 
-   public:
-    QueueSpinLock& host;
-    atomic<Guard*> next{nullptr};
-    atomic<bool> is_owner{false};
+   private:
+    QueueSpinLock& host_;
+    atomic<Guard*> next_{nullptr};
+    atomic<bool> is_owner_{false};
   };
 
  public:
@@ -58,15 +58,15 @@ class QueueSpinLock {
 
  private:
   void Acquire(Guard* waiter) {
-    Guard* prev_tail = waiter->host.tail.exchange(waiter);
+    Guard* prev_tail = waiter->host_.tail_.exchange(waiter);
     bool is_owner = prev_tail == nullptr;
-    waiter->is_owner.store(is_owner);
+    waiter->is_owner_.store(is_owner);
     if (!is_owner) {
-      prev_tail->next.store(waiter);
+      prev_tail->next_.store(waiter);
     }
 
     twist::ed::SpinWait spin_wait;
-    while (!waiter->is_owner.load()) {
+    while (!waiter->is_owner_.load()) {
       spin_wait();
     }
   }
@@ -74,11 +74,11 @@ class QueueSpinLock {
   void Release(Guard* owner) {
     bool success = false;
     do {
-      if (owner->next.load() == nullptr) {
+      if (owner->next_.load() == nullptr) {
         Guard* tmp_owner = owner;
-        success = owner->host.tail.compare_exchange_strong(tmp_owner, nullptr);
+        success = owner->host_.tail_.compare_exchange_strong(tmp_owner, nullptr);
       } else {
-        owner->next.load()->is_owner.store(true);
+        owner->next_.load()->is_owner_.store(true);
         success = true;
       }
     } while (!success);
@@ -99,6 +99,6 @@ class QueueSpinLock {
     va_end(args);
   }
 
- public:
-  atomic<Guard*> tail{nullptr};
+ private:
+  atomic<Guard*> tail_{nullptr};
 };
