@@ -19,9 +19,7 @@ namespace exe::executors {
 using twist::ed::stdlike::atomic;
 using exe::threads::SpinLock;
 
-class Strand
-  : public IExecutor
-  , public std::enable_shared_from_this<Strand>
+class Strand : public IExecutor
 {
  public:
   explicit Strand(IExecutor& underlying);
@@ -34,20 +32,18 @@ class Strand
   Strand(Strand&&) = delete;
   Strand& operator=(Strand&&) = delete;
 
-  ~Strand();
-
   // IExecutor
   void Submit(Task cs) override;
   
-private:
+ private:
   void Ll(const char* format, ...);
-
-  // void operator()();
 
  private:
   IExecutor& underlying_;
-  exe::support::UnboundedBlockingQueue<Task> tasks_;
+  //exe::support::UnboundedBlockingQueue<Task> tasks_;
+  std::queue<Task> tasks_{};
   SpinLock lock_;
+  SpinLock lock2_;
   atomic<bool> is_running_{false};
 };
 

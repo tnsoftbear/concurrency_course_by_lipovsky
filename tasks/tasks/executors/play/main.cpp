@@ -4,6 +4,8 @@
 
 #include <fmt/core.h>
 
+// clippy target playground Debug
+
 using namespace exe::executors;
 
 int main() {
