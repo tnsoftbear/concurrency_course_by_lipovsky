@@ -49,7 +49,7 @@ class QueueSpinLock {
    public:
     QueueSpinLock& host;
     Guard* next{nullptr};
-    bool locked{false};
+    bool is_owner{false};
   };
 
  public:
@@ -69,12 +69,12 @@ class QueueSpinLock {
       success = host.tail.compare_exchange_weak(tmp_tail, waiter);
       if (success) {
         if (prev_tail != nullptr) {
-          waiter->locked = true;
+          waiter->is_owner = true;
           Ll("Set waiter->locked=true: %p", (void*)waiter);
           prev_tail->next = waiter;
           Ll("Set prev_tail->next: %p for prev_tail: %p", (void*)waiter, (void*)prev_tail);
         } else {
-          waiter->locked = false;
+          waiter->is_owner = false;
           Ll("First node set: %p", (void*)waiter);
         }
         Ll("Successfully changed tail from %p to %p", (void*)prev_tail, (void*)waiter);
@@ -88,7 +88,7 @@ class QueueSpinLock {
     delete(ss);
 
     twist::ed::SpinWait spin_wait;
-    while (waiter->locked) {
+    while (waiter->is_owner) {
       spin_wait();
       Ll("Spinning waiter: %p", (void*)waiter);
     }
@@ -118,7 +118,7 @@ class QueueSpinLock {
           Ll("Release: Not changed tail to null, will repeat");
         }
       } else {
-        owner->next->locked = false;
+        owner->next->is_owner = false;
         success = true;
         Ll("Release: owner->next->locked=false");
       }

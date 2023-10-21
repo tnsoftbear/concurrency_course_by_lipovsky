@@ -53,7 +53,7 @@ class QueueSpinLock {
    public:
     QueueSpinLock& host;
     Guard* next{nullptr};
-    bool locked{false};
+    atomic<bool> is_owner{false};
   };
 
  public:
@@ -61,59 +61,47 @@ class QueueSpinLock {
 
  private:
   void Acquire(Guard* waiter) {
-    QueueSpinLock& host = waiter->host;
-
     bool success = false;
     do { // CAS-loop
       mtx.lock();
-      Guard* prev_tail = host.tail.load();
+      Guard* prev_tail = waiter->host.tail.load();
       Guard* tmp_tail = prev_tail;
-      success = host.tail.compare_exchange_weak(tmp_tail, waiter);
+      success = waiter->host.tail.compare_exchange_weak(tmp_tail, waiter);
       if (success) {
         if (prev_tail != nullptr) {
-          waiter->locked = true;
+          waiter->is_owner.store(false);
           prev_tail->next = waiter;
         } else {
-          waiter->locked = false;
+          waiter->is_owner.store(true);
         }
       }
       mtx.unlock();
     } while (!success);
 
     twist::ed::SpinWait spin_wait;
-    mtx.lock();
-    while (waiter->locked) {
-      mtx.unlock();
+    while (!waiter->is_owner.load()) {
       spin_wait();
-      mtx.lock();
     }
-    mtx.unlock();
   }
 
   void Release(Guard* owner) {
-    mtx.lock();
-    QueueSpinLock& host = owner->host;
-    if (host.tail.load() == nullptr) {
-      mtx.unlock();
+    if (owner->host.tail.load() == nullptr) {
       // nothing to release
       return;
     }
-    mtx.unlock();
 
     bool success = false;
     do {
       mtx.lock();
       if (owner->next == nullptr) {
         Guard* tmp_owner = owner;
-        success = host.tail.compare_exchange_strong(tmp_owner, nullptr);
+        success = owner->host.tail.compare_exchange_strong(tmp_owner, nullptr);
       } else {
-        owner->next->locked = false;
+        owner->next->is_owner.store(true);
         success = true;
       }
       mtx.unlock();
     } while (!success);
-
-    Ll("Release: Released owner: %p", (void*)owner);
   }
 
   void Ll(const char* format, ...) {
