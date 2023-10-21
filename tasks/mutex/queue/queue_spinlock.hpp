@@ -59,11 +59,10 @@ class QueueSpinLock {
  private:
   void Acquire(Guard* waiter) {
     Guard* prev_tail = waiter->host.tail.exchange(waiter);
-    if (prev_tail != nullptr) {
-      waiter->is_owner.store(false);
+    bool is_owner = prev_tail == nullptr;
+    waiter->is_owner.store(is_owner);
+    if (!is_owner) {
       prev_tail->next.store(waiter);
-    } else {
-      waiter->is_owner.store(true);
     }
 
     twist::ed::SpinWait spin_wait;
