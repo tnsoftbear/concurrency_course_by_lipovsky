@@ -4,16 +4,12 @@
 #include <cstdio>
 #include <string>
 #include <twist/ed/stdlike/atomic.hpp>
-#include <twist/ed/stdlike/mutex.hpp>
 #include <twist/ed/wait/spin.hpp>
 #include <twist/ed/stdlike/thread.hpp>
 
 #include <sstream>
 #include <iostream>
 #include <string>
-
-using twist::ed::stdlike::atomic;
-using twist::ed::stdlike::mutex;
 
 /*
  * Scalable Queue SpinLock
@@ -61,59 +57,92 @@ class QueueSpinLock {
 
  private:
   void Acquire(Guard* waiter) {
+    char* s = PrintChain(waiter);
+    Ll("Start Acquire for waiter: %p (%s)", (void*)waiter, s);
+    delete s;
     QueueSpinLock& host = waiter->host;
 
     bool success = false;
     do { // CAS-loop
-      mtx.lock();
       Guard* prev_tail = host.tail.load();
       Guard* tmp_tail = prev_tail;
       success = host.tail.compare_exchange_weak(tmp_tail, waiter);
       if (success) {
         if (prev_tail != nullptr) {
           waiter->locked = true;
+          Ll("Set waiter->locked=true: %p", (void*)waiter);
           prev_tail->next = waiter;
+          Ll("Set prev_tail->next: %p for prev_tail: %p", (void*)waiter, (void*)prev_tail);
         } else {
           waiter->locked = false;
+          Ll("First node set: %p", (void*)waiter);
         }
+        Ll("Successfully changed tail from %p to %p", (void*)prev_tail, (void*)waiter);
+      } else {
+        Ll("Cannot change tail from %p to %p", (void*)prev_tail, (void*)waiter);
       }
-      mtx.unlock();
     } while (!success);
 
+    char* ss = PrintChain(waiter);
+    Ll("Before spin for waiter: %p (%s)", (void*)waiter, s);
+    delete(ss);
+
     twist::ed::SpinWait spin_wait;
-    mtx.lock();
     while (waiter->locked) {
-      mtx.unlock();
       spin_wait();
-      mtx.lock();
+      Ll("Spinning waiter: %p", (void*)waiter);
     }
-    mtx.unlock();
+    Ll("After spin for waiter: %p", (void*)waiter);
   }
 
   void Release(Guard* owner) {
-    mtx.lock();
+    char* s = PrintChain(owner);
+    Ll("Release: Start for owner: %p (%s)", (void*)owner, s);
+    delete s;
+
     QueueSpinLock& host = owner->host;
     if (host.tail.load() == nullptr) {
-      mtx.unlock();
       // nothing to release
+      Ll("Release: Nothing to release host.tail is null");
       return;
     }
-    mtx.unlock();
 
     bool success = false;
     do {
-      mtx.lock();
       if (owner->next == nullptr) {
         Guard* tmp_owner = owner;
         success = host.tail.compare_exchange_strong(tmp_owner, nullptr);
+        if (success) {
+          Ll("Release: Ok changed tail to null");
+        } else {
+          Ll("Release: Not changed tail to null, will repeat");
+        }
       } else {
         owner->next->locked = false;
         success = true;
+        Ll("Release: owner->next->locked=false");
       }
-      mtx.unlock();
     } while (!success);
 
     Ll("Release: Released owner: %p", (void*)owner);
+  }
+
+  char* PrintChain(Guard* guard) {
+    char* out = new char[256];
+    if (!kShouldPrint) {
+      return out;
+    }
+
+    Guard* node = guard;
+    do {
+      sprintf(out + strlen(out), " -> %p", (void*)node);
+      node = node->next;
+    } while(node != nullptr);
+
+    QueueSpinLock& host = guard->host;
+    auto tail_node = host.tail.load();
+    sprintf(out + strlen(out), " (tail: %p)", (void*)tail_node);
+    return out;
   }
 
   void Ll(const char* format, ...) {
@@ -132,7 +161,5 @@ class QueueSpinLock {
   }
 
  public:
-  atomic<Guard*> tail{nullptr};
-  mutex mtx;
-
+  twist::ed::stdlike::atomic<Guard*> tail{nullptr};
 };
