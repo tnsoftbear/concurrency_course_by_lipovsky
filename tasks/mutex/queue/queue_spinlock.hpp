@@ -52,7 +52,7 @@ class QueueSpinLock {
 
    public:
     QueueSpinLock& host;
-    Guard* next{nullptr};
+    atomic<Guard*> next{nullptr};
     atomic<bool> is_owner{false};
   };
 
@@ -61,22 +61,13 @@ class QueueSpinLock {
 
  private:
   void Acquire(Guard* waiter) {
-    bool success = false;
-    do { // CAS-loop
-      mtx.lock();
-      Guard* prev_tail = waiter->host.tail.load();
-      Guard* tmp_tail = prev_tail;
-      success = waiter->host.tail.compare_exchange_weak(tmp_tail, waiter);
-      if (success) {
-        if (prev_tail != nullptr) {
-          waiter->is_owner.store(false);
-          prev_tail->next = waiter;
-        } else {
-          waiter->is_owner.store(true);
-        }
-      }
-      mtx.unlock();
-    } while (!success);
+    Guard* prev_tail = waiter->host.tail.exchange(waiter);
+    if (prev_tail != nullptr) {
+      waiter->is_owner.store(false);
+      prev_tail->next.store(waiter);
+    } else {
+      waiter->is_owner.store(true);
+    }
 
     twist::ed::SpinWait spin_wait;
     while (!waiter->is_owner.load()) {
@@ -92,15 +83,13 @@ class QueueSpinLock {
 
     bool success = false;
     do {
-      mtx.lock();
-      if (owner->next == nullptr) {
+      if (owner->next.load() == nullptr) {
         Guard* tmp_owner = owner;
         success = owner->host.tail.compare_exchange_strong(tmp_owner, nullptr);
       } else {
-        owner->next->is_owner.store(true);
+        owner->next.load()->is_owner.store(true);
         success = true;
       }
-      mtx.unlock();
     } while (!success);
   }
 
@@ -121,6 +110,4 @@ class QueueSpinLock {
 
  public:
   atomic<Guard*> tail{nullptr};
-  mutex mtx;
-
 };
