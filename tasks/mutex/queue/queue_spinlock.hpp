@@ -29,9 +29,6 @@ using twist::ed::stdlike::mutex;
  *
  */
 
-// Это решение проходит: clippy target stress_tests Debug
-// И зависает на: clippy target stress_tests FaultyThreadsASan
-
 // const bool kShouldPrint{true};
 const bool kShouldPrint{false};
 
@@ -76,11 +73,6 @@ class QueueSpinLock {
   }
 
   void Release(Guard* owner) {
-    if (owner->host.tail.load() == nullptr) {
-      // nothing to release
-      return;
-    }
-
     bool success = false;
     do {
       if (owner->next.load() == nullptr) {
