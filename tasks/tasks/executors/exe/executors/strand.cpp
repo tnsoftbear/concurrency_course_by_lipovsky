@@ -17,8 +17,6 @@ void Strand::Submit(Task task) {
     return;
   }
 
-  lock2_.Lock();
-
   auto decorated = [this]() mutable  {
     exe::support::UnboundedBlockingQueue<Task> processing_tasks;
     lock_.Lock();
@@ -39,44 +37,7 @@ void Strand::Submit(Task task) {
 
   is_running_.store(true);
   underlying_.Submit(std::move(decorated));
-
-  lock2_.Unlock();
 }
-
-// void Strand::Submit(Task task) {
-//   tasks_.Put(std::move(task));
-//   Ll("After tasks_.Put()");
-//   if (is_running_.load()) {
-//     return;
-//   }
-//   is_running_.store(true);
-//   auto decorated = [this]()  {
-//     Ll("Lambda started");
-//     exe::support::UnboundedBlockingQueue<Task> processing_tasks;
-    
-//     lock_.Lock();
-//     while (!tasks_.IsEmpty()) {
-//       processing_tasks.Put(tasks_.Take().value());
-//     }
-//     lock_.Unlock();
-
-//     size_t i = 0;
-//     while (!processing_tasks.IsEmpty()) {
-//       std::optional<Task> opt_task = processing_tasks.Take();
-//       i++;
-//       Task task = std::move(opt_task.value());
-//       task();
-//       Ll("Task completed, i: %lu", i);
-//     }
-//     is_running_.store(false);
-//     if (!tasks_.IsEmpty()) {
-//       Submit([]{});
-//     }
-//   };
-//   Ll("Before underlying_.Submit()");
-//   underlying_.Submit(std::move(decorated));
-// }
-
 
 void Strand::Ll(const char* format, ...) {
   if (!kShouldPrint) {
