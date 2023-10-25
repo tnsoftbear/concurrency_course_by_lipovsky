@@ -40,10 +40,50 @@ class MSQueue {
 
  public:
   MSQueue() {
-    //Ll("Construct");
     Node* sentinel = new Node{std::nullopt};
     head_.store(sentinel);
     tail_.store(sentinel);
+  }
+
+  MSQueue(const MSQueue& other) = delete;
+  MSQueue& operator=(const MSQueue&) = delete;
+
+  // // Конструктор перемещения
+  // MSQueue(MSQueue&& other) {
+  //   Ll("Move ctor starts");
+  //   head_.store(other.head_.load());
+  //   Ll("After head_.store(other.head_.load());");
+  //   tail_.store(other.tail_.load());
+  //   Ll("After tail_.store(other.tail_.load());");
+  //   size_.store(other.size_.load());
+  //   Ll("After size_.store(other.size_.load());");
+  //   //deleted_ = std::move(other.deleted_);
+  //   other.head_.store(nullptr);
+  //   other.tail_.store(nullptr);
+  //   other.size_.store(0);
+  //   Ll("Move ctor ends");
+  // }
+
+  // // Оператор присвоения перемещения
+  // MSQueue& operator=(MSQueue&& other) {
+  //   //printf("Move =\n");
+  //   if (this != &other) {
+  //     head_.store(other.head_.load());
+  //     tail_.store(other.tail_.load());
+  //     size_.store(other.size_.load());
+  //     //deleted_ = std::move(other.deleted_);
+  //     other.head_.store(nullptr);
+  //     other.tail_.store(nullptr);
+  //     other.size_.store(0);
+  //   }
+  //   return *this;
+  // }
+
+  // Актуально только под локом, иначе дата рейс с Put(). Put() тоже под локом.
+  void Swap(MSQueue& other) {
+    other.head_.exchange(head_.exchange(other.head_.load()));
+    other.tail_.exchange(tail_.exchange(other.tail_.load()));
+    other.size_.exchange(size_.exchange(other.size_.load()));
   }
 
   ~MSQueue() {
@@ -53,10 +93,11 @@ class MSQueue {
   }
 
   void Put(T item) {
+    Ll("Put");
     Node* new_node = new Node{std::move(item)};
     Node* curr_tail;
     while (true) {
-      //Ll("Push in while");
+      Ll("Push in while");
       Node* curr_tail = tail_.load();
 
       if (curr_tail->next != nullptr) {
@@ -72,29 +113,24 @@ class MSQueue {
       }
     }
 
-    //tail_.store(new_node);
     tail_.compare_exchange_strong(curr_tail, new_node);
     size_.fetch_add(1);
   }
 
   std::optional<T> Take() {
     while (true) {
-      //Ll("TryPop in while");
       Node* curr_head = head_.load();
       if (curr_head->next == nullptr) {
-        //Ll("Return nullopt");
         return std::nullopt;
       }
       if (head_.compare_exchange_weak(curr_head, curr_head->next)) {
         Node* next_head = curr_head->next;
         T item = std::move(*(next_head->value));
         
-        //delete curr_head;
         deleted_.push(curr_head);
         CollectGarbage();
         
         size_.fetch_sub(1);
-        //Ll("Return item");
         return item;
       }
     }
@@ -128,13 +164,11 @@ class MSQueue {
       Node* to_delete = head;
       head = head->next;
       delete to_delete;
-      //Ll("Deleted node");
     }
     while (!deleted_.empty()) {
       auto node = deleted_.front();
       deleted_.pop();
       delete node;
-      //Ll("Deleted hazard");
     }
   }
 
@@ -149,7 +183,6 @@ class MSQueue {
       auto node = deleted_.front();
       deleted_.pop();
       delete node;
-      //Ll("Deleting hazards");
     }
     Ll("Clear half of deleted: %lu", size / 2);
   }

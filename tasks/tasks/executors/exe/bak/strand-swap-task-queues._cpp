@@ -35,7 +35,9 @@ Strand::~Strand() {
 }
 
 void Strand::Submit(Task task) {
+  lock_.Lock();
   tasks_.Put(std::move(task));
+  lock_.Unlock();
   if (scheduled[id_].fetch_add(1) == 0) {
     SubmitSelf();
   }
@@ -48,10 +50,15 @@ void Strand::SubmitSelf() {
 }
 
 void Strand::Run() {
+  if (tasks_.IsEmpty()) {
+    return;
+  }
+
   TaskQueue processing_tasks;
-  do {
-    processing_tasks.Put(tasks_.Take().value());
-  } while (!tasks_.IsEmpty());
+
+  lock_.Lock();
+  processing_tasks.Swap(tasks_);
+  lock_.Unlock();
 
   size_t id = id_;
   const size_t completed = RunTasks(processing_tasks);
