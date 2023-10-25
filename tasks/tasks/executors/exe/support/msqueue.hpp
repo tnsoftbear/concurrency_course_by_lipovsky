@@ -13,8 +13,15 @@ namespace exe::support {
 
 // Michael-Scott unbounded lock-free queue
 
-const bool kShouldPrint = true;
-//const bool kShouldPrint = false;
+/**
+ * Очистка памяти от удалённых элементов происходит следующим образом.
+ * Ноды, которые извлекаются из очереди, указатели на них кладутся в очередь deleted_.
+ * Старшая половина этой очереди очищается каждый раз, когда очередь превышает 10 записей.
+ */
+
+
+//const bool kShouldPrint = true;
+const bool kShouldPrint = false;
 
 using twist::ed::stdlike::atomic;
 
@@ -33,23 +40,23 @@ class MSQueue {
 
  public:
   MSQueue() {
-    Ll("Construct");
+    //Ll("Construct");
     Node* sentinel = new Node{std::nullopt};
     head_.store(sentinel);
     tail_.store(sentinel);
   }
 
   ~MSQueue() {
-    Ll("~MSQueue: start");
+    //Ll("~MSQueue: start");
     DeleteList(head_.load());
-    Ll("~MSQueue: ends");
+    //Ll("~MSQueue: ends");
   }
 
-  void Push(T item) {
+  void Put(T item) {
     Node* new_node = new Node{std::move(item)};
     Node* curr_tail;
     while (true) {
-      Ll("Push in while");
+      //Ll("Push in while");
       Node* curr_tail = tail_.load();
 
       if (curr_tail->next != nullptr) {
@@ -70,12 +77,12 @@ class MSQueue {
     size_.fetch_add(1);
   }
 
-  std::optional<T> TryPop() {
+  std::optional<T> Take() {
     while (true) {
-      Ll("TryPop in while");
+      //Ll("TryPop in while");
       Node* curr_head = head_.load();
       if (curr_head->next == nullptr) {
-        Ll("Return nullopt");
+        //Ll("Return nullopt");
         return std::nullopt;
       }
       if (head_.compare_exchange_weak(curr_head, curr_head->next)) {
@@ -84,17 +91,17 @@ class MSQueue {
         
         //delete curr_head;
         deleted_.push(curr_head);
-        ClearHalfDeleted();
+        CollectGarbage();
         
         size_.fetch_sub(1);
-        Ll("Return item");
+        //Ll("Return item");
         return item;
       }
     }
   }
 
   bool IsEmpty() {
-    return size_.load() == 0; // return head_.load() == tail_.load();
+    return size_.load() == 0;
   }
 
   size_t Count() {
@@ -121,17 +128,19 @@ class MSQueue {
       Node* to_delete = head;
       head = head->next;
       delete to_delete;
-      Ll("Deleted node");
+      //Ll("Deleted node");
     }
     while (!deleted_.empty()) {
       auto node = deleted_.front();
       deleted_.pop();
       delete node;
-      Ll("Deleted hazard");
+      //Ll("Deleted hazard");
     }
   }
 
-  void ClearHalfDeleted() {
+  // Clears half of nodes that were marked as deleted, if their count more than 10
+  // Thus it deletes 5 oldest marked deleted.
+  void CollectGarbage() {
     size_t size = deleted_.size();
     if (size < 10) {
       return;
@@ -140,8 +149,9 @@ class MSQueue {
       auto node = deleted_.front();
       deleted_.pop();
       delete node;
-      Ll("Deleting hazards");
+      //Ll("Deleting hazards");
     }
+    Ll("Clear half of deleted: %lu", size / 2);
   }
 };
 

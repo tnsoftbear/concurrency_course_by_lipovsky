@@ -2,9 +2,7 @@
 
 #include <exe/executors/executor.hpp>
 
-#include <exe/support/queue.hpp>
-#include <memory>
-#include <twist/ed/stdlike/atomic.hpp>
+#include <exe/support/msqueue.hpp>
 #include <exe/threads/spinlock.hpp>
 
 namespace exe::executors {
@@ -13,10 +11,10 @@ namespace exe::executors {
 
 using twist::ed::stdlike::atomic;
 using exe::threads::SpinLock;
+using TaskQueue = exe::support::MSQueue<Task>;
 
 class Strand
   : public IExecutor
-  , public std::enable_shared_from_this<Strand>
 {
  public:
   explicit Strand(IExecutor& underlying);
@@ -34,17 +32,16 @@ class Strand
   // IExecutor
   void Submit(Task cs) override;
   
-private:
+ private:
   void Ll(const char* format, ...);
   void SubmitSelf();
-  size_t RunTasks(exe::support::UnboundedBlockingQueue<Task>& processing_tasks);
+  size_t RunTasks(TaskQueue& processing_tasks);
   void Run();
 
  private:
   IExecutor& underlying_;
-  exe::support::UnboundedBlockingQueue<Task> tasks_;
+  TaskQueue tasks_{};
   SpinLock lock_;
-  atomic<bool> is_running_{false};
   size_t id_;
 };
 

@@ -1,8 +1,5 @@
 #include <exe/executors/strand.hpp>
-
-#include <mutex>
 #include <twist/ed/wait/spin.hpp>
-#include <twist/ed/local/var.hpp>
 #include <map>
 
 /**
@@ -10,36 +7,38 @@
  * https://gitlab.com/Lipovsky/await/-/blob/master/await/tasks/exe/strand.cpp?ref_type=heads
  * Но он не помогает решить проблему, с которой я столкнулся в других решениях,
  * которая проявляется в тесте: clippy target strand_lifetime_tests FaultyFibersASan
- * После завершения задачи, объект странда удаляется из памяти, потому что был сделан automation.reset() 
+ * После завершения задачи, объект странда удаляется из памяти, потому что в этом тесте был сделан automation.reset() 
  * См. /workspace/concurrency-course/tasks/tasks/executors/tests/executors/strand/lifetime.cpp
  * А т.к. this удалён, мы больше не можем обращаться к свойствам объекта и принимать по ним решения.
  * В данном случае речь идёт от свойстве counter_, по которой мы решаем продолжать ли обслуживать очередь ожидания задач или нет.
  * Поэтому я вынес этот счётчик в статическую память в мапу. 
- * Кроме того, приходится использовать std::atomic вместо twsit/atomic, 
- * потому что я не знаю, как их инициализировать, когда они в мапе, чтобы это работало для FaultyFibers.
+ * Кроме того, приходится использовать std::atomic вместо twist/atomic, 
+ * потому что я не знаю, как инициализировать атомики из твиста, когда они в мапе, чтобы это работало для FaultyFibers.
+ *
+ * Неблокирующая очередь не реализована до конца, т.к. тесты падают из-за утечки памяти - нужна реализация очистки памяти через hazard pointer или ещё как-то.
  */
 
 namespace exe::executors {
 
-//const bool kShouldPrint = true;
- const bool kShouldPrint = false;
+const bool kShouldPrint = true;
+// const bool kShouldPrint = false;
 
-static std::map<size_t, std::atomic<size_t>> counters;
+static std::map<size_t, std::atomic<size_t>> scheduled;
 static atomic<size_t> max_id{0};
 
 Strand::Strand(IExecutor& underlying)
   : underlying_(underlying) 
   , id_(max_id.fetch_add(1)) {
-    counters[id_].store(0);
+    scheduled[id_].store(0);
   }
 
 Strand::~Strand() {
-  counters.erase(id_);
+  scheduled.erase(id_);
 }
 
 void Strand::Submit(Task task) {
   tasks_.Put(std::move(task));
-  if (counters[id_].fetch_add(1) == 0) {
+  if (scheduled[id_].fetch_add(1) == 0) {
     SubmitSelf();
   }
 }
@@ -59,14 +58,10 @@ void Strand::Run() {
   }
   lock_.Unlock();
 
-  if (processing_tasks.IsEmpty()) {
-    return;
-  }
-
   size_t id = id_;
-  const size_t done = RunTasks(processing_tasks);
-  const size_t left = counters[id].fetch_sub(done);
-  if (left > done) {
+  const size_t completed = RunTasks(processing_tasks);
+  const size_t prev_queue_size = scheduled[id].fetch_sub(completed);
+  if (prev_queue_size > completed) {
     SubmitSelf();
   }
 }

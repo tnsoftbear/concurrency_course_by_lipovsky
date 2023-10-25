@@ -1,7 +1,5 @@
 #include <exe/executors/strand.hpp>
-
 #include <twist/ed/wait/spin.hpp>
-#include <twist/ed/local/var.hpp>
 #include <map>
 
 /**
@@ -12,12 +10,10 @@
  * После завершения задачи, объект странда удаляется из памяти, потому что в этом тесте был сделан automation.reset() 
  * См. /workspace/concurrency-course/tasks/tasks/executors/tests/executors/strand/lifetime.cpp
  * А т.к. this удалён, мы больше не можем обращаться к свойствам объекта и принимать по ним решения.
- * В данном случае речь идёт от свойстве counter_, по которой мы решаем продолжать ли обслуживать очередь ожидания задач или нет.
+ * В данном случае речь идёт о счётчике scheduled, по которому мы решаем продолжать ли обслуживать очередь ожидания задач или нет.
  * Поэтому я вынес этот счётчик в статическую память в мапу. 
  * Кроме того, приходится использовать std::atomic вместо twist/atomic, 
  * потому что я не знаю, как инициализировать атомики из твиста, когда они в мапе, чтобы это работало для FaultyFibers.
- *
- * Неблокирующая очередь не реализована до конца, т.к. тесты падают из-за утечки памяти - нужна реализация очистки памяти через hazard pointer или ещё как-то.
  */
 
 namespace exe::executors {
@@ -53,7 +49,7 @@ void Strand::SubmitSelf() {
 }
 
 void Strand::Run() {
-  exe::support::UnboundedBlockingQueue<Task> processing_tasks;
+  TaskQueue processing_tasks;
   lock_.Lock();
   while (!tasks_.IsEmpty()) {
     processing_tasks.Put(tasks_.Take().value());
@@ -68,7 +64,7 @@ void Strand::Run() {
   }
 }
 
-size_t Strand::RunTasks(exe::support::UnboundedBlockingQueue<Task>& processing_tasks) {
+size_t Strand::RunTasks(TaskQueue& processing_tasks) {
   size_t count = 0;
   while (!processing_tasks.IsEmpty()) {
     processing_tasks.Take().value()();
