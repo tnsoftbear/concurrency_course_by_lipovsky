@@ -1,0 +1,94 @@
+#include <exe/executors/strand.hpp>
+
+#include <mutex>
+#include <twist/ed/wait/spin.hpp>
+
+namespace exe::executors {
+
+const bool kShouldPrint = true;
+// const bool kShouldPrint = false;
+
+Strand::Strand(IExecutor& underlying)
+  : underlying_(underlying) {
+}
+
+Strand::~Strand() {
+  Ll("Strand::~Strand()");
+}
+
+void Strand::Submit(Task task) {
+  tasks_.Push(std::move(task));
+  Ll("After put");
+  if (is_running_.load()) {
+    Ll("is running -> return");
+    return;
+  }
+
+  is_running_.store(true);
+  underlying_.Submit([this]() {
+    RunTasks();
+  });
+}
+
+void Strand::RunTasks() {
+  Ll("Start lambda");
+  exe::support::MSQueue<Task> processing_tasks;
+  lock_.Lock();
+  // while (!tasks_.IsEmpty()) {
+  //   Ll("perelozhili");
+  //   processing_tasks.Push(std::move(tasks_.TryPop().value()));
+  // }
+
+  while (true) {
+    std::optional<Task> opt = tasks_.TryPop();
+    if (!opt.has_value()) {
+      break;
+    }
+    processing_tasks.Push(std::move(opt.value()));
+  }
+
+  // processing_tasks.Put([this] {
+  //   is_running_.store(false); 
+  //   if (!tasks_.IsEmpty()) {
+  //     Submit([]{});
+  //   }
+  // });
+  lock_.Unlock();
+
+  Ll("Before while");;
+  while (true) {
+    std::optional<Task> opt = processing_tasks.TryPop();
+    printf("1]\n");
+    if (!opt.has_value()) {
+      Ll("No value, break");
+      break;
+    }
+    printf("2]\n");
+    opt.value()();
+    Ll("Task completed");
+  }
+
+  Ll("After while");
+  is_running_.store(false);
+  if (!tasks_.IsEmpty()) {
+    Submit([]{});
+  }
+  Ll("Lambda ends");
+}
+
+void Strand::Ll(const char* format, ...) {
+  if (!kShouldPrint) {
+    return;
+  }
+
+  char buf [250];
+  std::ostringstream pid;
+  pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+  sprintf(buf, "%s Strand::%s, qc: %lu\n", pid.str().c_str(), format, tasks_.Count());
+  va_list args;
+  va_start(args, format);
+  vprintf(buf, args);
+  va_end(args);
+}
+
+}  // namespace exe::executors

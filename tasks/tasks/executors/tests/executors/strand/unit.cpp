@@ -47,13 +47,17 @@ TEST_SUITE(Strand) {
 
     executors::Submit(strand, [&] {
       done = true;
+      Ll("Routine ends");
     });
 
+    Ll("Before pool.WaitIdle();");
     pool.WaitIdle();
 
     ASSERT_TRUE(done);
 
+    Ll("Before pool.Stop();");
     pool.Stop();
+    Ll("Test ends");
   }
 
   SIMPLE_TEST(Decorator) {
@@ -97,6 +101,7 @@ TEST_SUITE(Strand) {
 
     pool.WaitIdle();
 
+    printf("counter: %lu, kIncrements: %lu\n", counter, kIncrements);
     ASSERT_EQ(counter, kIncrements);
 
     pool.Stop();
@@ -153,7 +158,6 @@ TEST_SUITE(Strand) {
     executors::ThreadPool pool{16};
     pool.Start();
 
-//    static const size_t kStrands = 50;
     static const size_t kStrands = 50;
 
     std::deque<Robot> robots;
@@ -161,8 +165,6 @@ TEST_SUITE(Strand) {
       robots.emplace_back(pool);
     }
 
-    // static const size_t kPushes = 25;
-    // static const size_t kIterations = 25;
     static const size_t kPushes = 25;
     static const size_t kIterations = 25;
 

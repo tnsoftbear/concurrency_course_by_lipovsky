@@ -1,5 +1,6 @@
 #include <exe/executors/strand.hpp>
 
+#include <mutex>
 #include <twist/ed/wait/spin.hpp>
 #include <twist/ed/local/var.hpp>
 #include <map>
@@ -20,25 +21,25 @@
 
 namespace exe::executors {
 
-const bool kShouldPrint = true;
-// const bool kShouldPrint = false;
+//const bool kShouldPrint = true;
+ const bool kShouldPrint = false;
 
-static std::map<size_t, std::atomic<size_t>> scheduled;
+static std::map<size_t, std::atomic<size_t>> counters;
 static atomic<size_t> max_id{0};
 
 Strand::Strand(IExecutor& underlying)
   : underlying_(underlying) 
   , id_(max_id.fetch_add(1)) {
-    scheduled[id_].store(0);
+    counters[id_].store(0);
   }
 
 Strand::~Strand() {
-  scheduled.erase(id_);
+  counters.erase(id_);
 }
 
 void Strand::Submit(Task task) {
   tasks_.Put(std::move(task));
-  if (scheduled[id_].fetch_add(1) == 0) {
+  if (counters[id_].fetch_add(1) == 0) {
     SubmitSelf();
   }
 }
@@ -58,10 +59,14 @@ void Strand::Run() {
   }
   lock_.Unlock();
 
+  if (processing_tasks.IsEmpty()) {
+    return;
+  }
+
   size_t id = id_;
-  const size_t completed = RunTasks(processing_tasks);
-  const size_t prev_queue_size = scheduled[id].fetch_sub(completed);
-  if (prev_queue_size > completed) {
+  const size_t done = RunTasks(processing_tasks);
+  const size_t left = counters[id].fetch_sub(done);
+  if (left > done) {
     SubmitSelf();
   }
 }

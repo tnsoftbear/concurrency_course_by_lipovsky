@@ -41,8 +41,7 @@ class Strand
   
 private:
   void Ll(const char* format, ...);
-
-  // void operator()();
+  void RunTasks();
 
  private:
   IExecutor& underlying_;
