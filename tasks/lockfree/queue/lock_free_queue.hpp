@@ -11,7 +11,8 @@
 template <typename T>
 class LockFreeQueue {
   struct Node {
-    // Not implemented
+    T item;
+    Node* next{nullptr};
   };
 
  public:

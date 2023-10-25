@@ -44,7 +44,6 @@ class ThreadPool {
  private:
   void WorkerRoutine();
   void Ll(const char* format, ...);
-  static std::string DetectPid();
 
  private:
   size_t thread_total_;
