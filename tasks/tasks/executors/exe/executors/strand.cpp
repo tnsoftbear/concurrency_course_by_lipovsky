@@ -18,8 +18,8 @@
 
 namespace exe::executors {
 
-const bool kShouldPrint = true;
-//const bool kShouldPrint = false;
+//const bool kShouldPrint = true;
+const bool kShouldPrint = false;
 
 static std::map<size_t, std::atomic<size_t>> scheduled;
 static atomic<size_t> max_id{0};

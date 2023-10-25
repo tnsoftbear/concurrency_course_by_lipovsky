@@ -93,11 +93,11 @@ class MSQueue {
   }
 
   void Put(T item) {
-    Ll("Put");
+    //Ll("Put");
     Node* new_node = new Node{std::move(item)};
     Node* curr_tail;
     while (true) {
-      Ll("Push in while");
+      // Ll("Push in while");
       Node* curr_tail = tail_.load();
 
       if (curr_tail->next != nullptr) {
