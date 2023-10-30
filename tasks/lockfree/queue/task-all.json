@@ -2,6 +2,23 @@
   "tests": [
     {
       "targets": [
+        "queue_unit_tests"
+      ],
+      "profiles": [
+        "Debug"
+      ]
+    },
+    {
+      "targets": [
+        "queue_stress_lf_tests"
+      ],
+      "profiles": [
+        "FaultyFibers",
+        "FaultyThreadsTSan"
+      ]
+    },
+    {
+      "targets": [
         "stack_unit_tests"
       ],
       "profiles": [

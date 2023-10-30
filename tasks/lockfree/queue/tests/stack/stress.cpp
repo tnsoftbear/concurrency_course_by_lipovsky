@@ -12,6 +12,23 @@
 
 //////////////////////////////////////////////////////////////////////
 
+void Ll(const char* format, ...) {
+  bool k_should_print = true;
+  if (!k_should_print) {
+    return;
+  }
+
+  char buf [250];
+  std::ostringstream pid;
+  pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+  //sprintf(buf, "%s Strand::%s, qc: %lu\n", pid.str().c_str(), format, tasks_.Count());
+  sprintf(buf, "%s StressTest::%s\n", pid.str().c_str(), format);
+  va_list args;
+  va_start(args, format);
+  vprintf(buf, args);
+  va_end(args);
+}
+
 template <typename T>
 struct Counted {
   static std::atomic<size_t> count;
@@ -103,19 +120,28 @@ void StressTest(size_t threads, size_t batch_size_limit) {
           // Push
 
           for (size_t j = 0; j < batch_size; ++j) {
-            Widget w{twist::test::Random(1000007)};
+            size_t value = twist::test::Random(1000007);
+            Widget w{value};
 
             pushed.fetch_add(w.data);
+            //pushed.fetch_add(1);
             stack->Push(std::move(w));
             ++ops;
+            // Ll("Pushed, j: %lu, value: %lu, ops: %lu, bs: %lu", j, value, ops.load(), batch_size);
           }
 
           // Pop
 
           for (size_t j = 0; j < batch_size; ++j) {
             auto w = stack->TryPop();
+            // if (w.has_value()) {
+            //   Ll("Popped, j: %lu, value: %lu, ops: %lu, bs: %lu", j, w->data, ops.load(), batch_size);
+            // } else {
+            //   Ll("Popped, j: %lu, no value, ops: %lu", j, ops.load());
+            // }
             ASSERT_TRUE(w);
             popped.fetch_add(w->data);
+            //popped.fetch_add(1);
           }
         }
       });
@@ -146,6 +172,10 @@ void StressTest(size_t threads, size_t batch_size_limit) {
 //////////////////////////////////////////////////////////////////////
 
 TEST_SUITE(LockFreeStack) {
+  TWIST_TEST(Stress0, 1s) {
+    StressTest(/*threads=*/2, /*batch_size_limit=*/2);
+  }
+
   TWIST_TEST(Stress1, 5s) {
     StressTest(/*threads=*/2, /*batch_size_limit=*/2);
   }

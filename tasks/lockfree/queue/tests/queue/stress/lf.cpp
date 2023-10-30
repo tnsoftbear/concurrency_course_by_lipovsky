@@ -22,6 +22,7 @@ struct Widget {
 };
 
 //////////////////////////////////////////////////////////////////////
+// clippy target queue_stress_lf_tests FaultyThreadsTSan
 
 void StressTest(size_t threads, size_t batch_size_limit) {
   twist::test::SetLockFreeAdversary();
@@ -40,6 +41,7 @@ void StressTest(size_t threads, size_t batch_size_limit) {
 
       for (twist::test::TimeBudget budget; budget; ) {
         size_t batch_size = twist::test::Random(1, batch_size_limit + 1);
+        //printf("batch_size: %lu\n", batch_size);
 
         // Push
 
@@ -47,6 +49,7 @@ void StressTest(size_t threads, size_t batch_size_limit) {
           Widget w{twist::test::Random(1000007)};
 
           pushed.fetch_add(w.data);
+          //printf("Push data: %lu\n", w.data);
           queue->Push(std::move(w));
           ++ops;
         }
@@ -55,6 +58,7 @@ void StressTest(size_t threads, size_t batch_size_limit) {
 
         for (size_t j = 0; j < batch_size; ++j) {
           auto w = queue->TryPop();
+          //printf("Before assert, j: %lu, w: %lu\n", j, w.value().data);
           ASSERT_TRUE(w);
           popped.fetch_add(w->data);
         }

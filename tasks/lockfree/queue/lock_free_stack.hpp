@@ -2,11 +2,21 @@
 
 #include <twist/ed/stdlike/atomic.hpp>
 
-#include <hazard/manager.hpp>
+//#include <hazard/manager.hpp>
+#include <hazard/hazard.cpp>
+#include <hazard/mutator.cpp>
 
 #include <optional>
 
+#include <cstddef>
+#include <twist/ed/stdlike/thread.hpp>  // for debug logs
+#include <sstream>
+#include "hazard/mutator.hpp"
+
 // Treiber unbounded MPMC lock-free stack
+
+const bool kShouldPrint = true;
+//const bool kShouldPrint = false;
 
 template <typename T>
 class LockFreeStack {
@@ -25,6 +35,7 @@ class LockFreeStack {
   }
 
   void Push(T item) {
+    Ll("Push: starts");
     Node* new_node = new Node{std::move(item)};
     new_node->next = top_.load();
 
@@ -34,10 +45,11 @@ class LockFreeStack {
   }
 
   std::optional<T> TryPop() {
+    Ll("TryPop: starts");
     auto mutator = gc_->MakeMutator();
 
     while (true) {
-      Node* curr_top = mutator.Protect(0, top_);
+      Node* curr_top = mutator->Protect(0, top_);
 
       if (curr_top == nullptr) {
         return std::nullopt;
@@ -45,7 +57,7 @@ class LockFreeStack {
 
       if (top_.compare_exchange_weak(curr_top, curr_top->next)) {
         T item = std::move(curr_top->item);
-        mutator.Retire(curr_top);
+        mutator->Retire(curr_top);
         return item;
       }
     }
@@ -63,4 +75,21 @@ class LockFreeStack {
  private:
   hazard::Manager* gc_;
   twist::ed::stdlike::atomic<Node*> top_{nullptr};
+
+ private:
+  void Ll(const char* format, ...) {
+    if (!kShouldPrint) {
+      return;
+    }
+
+    char buf [250];
+    std::ostringstream pid;
+    pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+    //sprintf(buf, "%s Strand::%s, qc: %lu\n", pid.str().c_str(), format, tasks_.Count());
+    sprintf(buf, "%s LockFreeStack::%s\n", pid.str().c_str(), format);
+    va_list args;
+    va_start(args, format);
+    vprintf(buf, args);
+    va_end(args);
+  }
 };
