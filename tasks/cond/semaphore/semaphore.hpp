@@ -18,13 +18,7 @@ const bool kShouldPrint = false;
 
 class Semaphore {
  public:
-  explicit Semaphore(size_t tokens) {
-    tokens_ = tokens;
-  }
-
-  ~Semaphore() {
-    wait_cv_.notify_all();
-  }
+  explicit Semaphore(size_t tokens) : tokens_(tokens) {}
 
   void Acquire() {
     std::unique_lock<mutex> lock(*wait_mtx_);
