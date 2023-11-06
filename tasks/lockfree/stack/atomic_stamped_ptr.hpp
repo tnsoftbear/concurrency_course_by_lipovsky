@@ -6,6 +6,11 @@
 
 #include <cstdlib>
 
+#include <cstddef>
+#include <twist/ed/stdlike/thread.hpp>  // for debug logs
+#include <sstream>
+
+#include <twist/ed/stdlike/mutex.hpp>
 //////////////////////////////////////////////////////////////////////
 
 // Notation:
@@ -140,10 +145,20 @@ class AtomicStampedPtr {
     return Unpack(old);
   }
 
-  bool CompareExchangeWeak(StampedPtr<T>& expected, StampedPtr<T> desired) {
+  bool CompareExchangeWeak(
+    StampedPtr<T>& expected,
+    StampedPtr<T> desired,
+    std::memory_order success_mo = std::memory_order_seq_cst,
+    std::memory_order failure_mo = std::memory_order_seq_cst
+  ) {
     PackedPtr expected_packed = Pack(expected);
-    bool succeeded =
-        packed_ptr_.compare_exchange_weak(expected_packed, Pack(desired));
+    bool succeeded = packed_ptr_
+      .compare_exchange_weak(
+        expected_packed,
+        Pack(desired), 
+        success_mo, 
+        failure_mo
+      );
     if (!succeeded) {
       expected = Unpack(expected_packed);
     }
@@ -161,4 +176,20 @@ class AtomicStampedPtr {
 
  private:
   twist::ed::stdlike::atomic<PackedPtr> packed_ptr_;
+
+  void Ll(const char* format, ...) {
+    bool k_should_print = false;
+    if (!k_should_print) {
+        return;
+    }
+
+    char buf[250];
+    std::ostringstream pid;
+    pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+    sprintf(buf, "%s AtomicStampedPtr::%s\n", pid.str().c_str(), format);
+    va_list args;
+    va_start(args, format);
+    vprintf(buf, args);
+    va_end(args);
+  }
 };
