@@ -142,6 +142,7 @@ class AtomicStampedPtr {
 
   bool CompareExchangeWeak(StampedPtr<T>& expected, StampedPtr<T> desired) {
     PackedPtr expected_packed = Pack(expected);
+    //printf("packed_ptr_: %lu, expected_packed: %lu\n", packed_ptr_.load(), expected_packed);
     bool succeeded =
         packed_ptr_.compare_exchange_weak(expected_packed, Pack(desired));
     if (!succeeded) {

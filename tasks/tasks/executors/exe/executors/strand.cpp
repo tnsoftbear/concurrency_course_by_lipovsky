@@ -14,6 +14,11 @@
  * Поэтому я вынес этот счётчик в статическую память в мапу. 
  * Кроме того, приходится использовать std::atomic вместо twist/atomic, 
  * потому что я не знаю, как инициализировать атомики из твиста, когда они в мапе, чтобы это работало для FaultyFibers.
+ * В итоге решение не выглядит ожидаемо верным. Надо убрать атомики и статические переменные.
+ *
+ * Подсказки:
+ * RL: Если вы не используете exchange, вы пишете плохой стренд.
+ * IK: Хотя какой exchange здесь может быть, если атомики запрещены?
  */
 
 namespace exe::executors {
@@ -22,7 +27,7 @@ namespace exe::executors {
 const bool kShouldPrint = false;
 
 static std::map<size_t, std::atomic<size_t>> scheduled;
-static atomic<size_t> max_id{0};
+static atomic<size_t> max_id{0};  // не атомиком тоже работает, наверно, нет подходящео теста
 
 Strand::Strand(IExecutor& underlying)
   : underlying_(underlying) 

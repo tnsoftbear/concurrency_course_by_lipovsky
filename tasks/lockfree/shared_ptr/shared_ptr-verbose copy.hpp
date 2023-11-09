@@ -8,6 +8,8 @@
 
 using twist::ed::stdlike::atomic;
 
+#include <twist/ed/stdlike/mutex.hpp>
+
 //////////////////////////////////////////////////////////////////////
 
 #include <cstdlib>
@@ -20,10 +22,9 @@ const bool kShouldPrint = false;
 namespace detail {
 
 struct SplitCount {
-  int32_t transient{0}; // транзитивный счётчик
-  int32_t strong{0};  // > 0 ссс - счётчик сильных ссылок
+  int32_t transient{0};
+  int32_t strong{0};  // > 0
 
-  // Оператор сравнения нужен для операций в twist::ed::stdlike::atomic
   bool operator==(const SplitCount& other) const {
     return (transient == other.transient) && (strong == other.strong);
   }
@@ -58,7 +59,9 @@ public:
   atomic<detail::SplitCount> counter = detail::SplitCount{};
   ControlBlock(T* data_ptr, detail::SplitCount cnt)
     : data_ptr(data_ptr)
-    , counter(cnt) {}
+     {
+      counter.store(cnt);
+    }
   ControlBlock(const ControlBlock& that)
     : ControlBlock(that.data_ptr, that.counter.load()) {}
   ControlBlock() : ControlBlock(nullptr, detail::SplitCount{0, 0}) {}
@@ -93,14 +96,17 @@ public:
   SharedPtr(T* data, detail::SplitCount counter)
       : ctrl_ptr(new ControlBlock(data, counter)) {
     IncrementStrong();
+    PrintMe("SharedPtr(T* data, detail::SplitCount counter)");
   }
 
   explicit SharedPtr(ControlBlock* ctrl_ptr)
       : ctrl_ptr(ctrl_ptr) {
     IncrementStrong();
+    PrintMe("SharedPtr(ControlBlock* ctrl)");
   }
 
   SharedPtr() {
+    PrintMe("SharedPtr()");
   }
 
   // Copy ctor
@@ -108,6 +114,7 @@ public:
       : ctrl_ptr(that.ctrl_ptr)
   {
     IncrementStrong();
+    PrintMe("SharedPtr(const SharedPtr<T>& that)");
   }
 
   // Copy assignment
@@ -117,6 +124,7 @@ public:
       ctrl_ptr = that.ctrl_ptr;
       IncrementStrong();
     }
+    PrintMe("SharedPtr<T>& operator=(const SharedPtr<T>& that)");
     return *this;
   }
 
@@ -124,6 +132,7 @@ public:
   SharedPtr(SharedPtr<T>&& that) noexcept
       : ctrl_ptr(std::move(that.ctrl_ptr)) {
     that.ctrl_ptr = nullptr;
+    PrintMe("SharedPtr(SharedPtr<T>&& that)");
   }
 
   // Move assignment
@@ -132,15 +141,17 @@ public:
       Reset();
       ctrl_ptr = std::exchange(that.ctrl_ptr, nullptr);
     }
+    PrintMe("SharedPtr<T>& operator=(SharedPtr<T>&& that)");
     return *this;
   }
 
   ~SharedPtr() {
     Reset();
+    PrintMe("~SharedPtr() ends");
   }
 
   T* operator->() const { 
-    return ctrl_ptr->data_ptr;
+    return ctrl_ptr != nullptr ? ctrl_ptr->data_ptr : nullptr;
   }
 
   T& operator*() const { return *ctrl_ptr->data_ptr; }
@@ -150,6 +161,7 @@ public:
   // cleanup any existing data
   void Reset() {
     if (ctrl_ptr != nullptr) {
+      PrintMe("Reset: starts");
       DecrementStrong();
       ctrl_ptr = nullptr;
     }
@@ -164,12 +176,17 @@ public:
         counter_new.strong += strong;
         counter_new.transient += transient;
       } while (!ctrl_ptr->counter.compare_exchange_weak(counter_old, counter_new));
+      Ll("IncrementCounter: ends for change of strong by %d now is %d and change of transient by %d now is %d in this: %p, ctrl: %p", strong, counter_new.strong, transient, counter_new.transient, this, ctrl_ptr);
 
       if (
         counter_new.strong == 0
         && counter_new.transient == 0
       ) {
-        delete ctrl_ptr;
+        Ll("Reset: to 0, delete ctrl: %p", ctrl_ptr);
+        auto delete_ptr = ctrl_ptr;
+        ctrl_ptr = nullptr;
+        delete delete_ptr;
+        //ctrl_ptr = nullptr;
       }
     }
   }
@@ -179,7 +196,7 @@ public:
   }
 
   void DecrementStrong(int32_t dec = 1) {
-    IncrementCounter(-dec, 0);
+    IncrementCounter(-1 * dec, 0);
   }
 
   void IncrementTransient(int32_t inc = 1) {
@@ -187,7 +204,7 @@ public:
   }
 
   void DecrementTransient(int32_t dec = 1) {
-    IncrementCounter(0, -dec);
+    IncrementCounter(0, -1 * dec);
   }
 
   void PrintMe(std::string prefix = "") {
@@ -204,9 +221,11 @@ public:
       Ll("SharedPtr::%s (this: %p, ctrl: %p)", prefix.c_str(), this, ctrl_ptr);
     }
   }
-
-public: // public, потому что обращаюсь к указателю в AtomicSharedPtr для сохранения его в StampedPtr
+//private:
+public:
   ControlBlock* ctrl_ptr{nullptr};
+
+private:
 };
 
 template <typename T, typename... Args>
@@ -226,21 +245,22 @@ class AtomicSharedPtr {
   }
 
   ~AtomicSharedPtr() {
+    Ll("~AtomicSharedPtr()");
     Store(SharedPtr<T>());
   }
 
   SharedPtr<T> Load() {
-    // Увеличиваем транзитивный плюсовой счётчик (stamped_ptr.stamp)
     auto stamped_ptr = AcquireTransientRef();
+    Ll("AtomicSharedPtr::Load: stamp: %d", stamped_ptr.stamp);
     auto shared_ptr = ToSharedPtr(stamped_ptr);
-    // Уменьшаем транзитивный минусовой счётчик (counter.transient из ControlBlock)
+    shared_ptr.PrintMe("AtomicSharedPtr::Load: Before shared_ptr.DecrementTransient(1);");
     shared_ptr.DecrementTransient(1);
 
-    // Handle stamp overflow - сокращаем транзитивный счётчик
+    // Handle stamp overflow
     size_t limit = 64000;
     if (stamped_ptr.stamp > limit) {
-      shared_ptr.IncrementTransient(limit);
-      stamped_ptr.stamp -= limit;
+      shared_ptr.IncrementTransient(limit / 2);
+      stamped_ptr.stamp -= (limit / 2);
       atomic_stamped_ptr_.Store(stamped_ptr);
     }
 
@@ -248,13 +268,13 @@ class AtomicSharedPtr {
   }
 
   void Store(SharedPtr<T> target) {
-    // Увеличиваем ссс, потому что передаём владение в AtomicStampedPtr, где не используется SharedPtr, а StampedPtr, который не имеет счётчика.
+    Ll("AtomicSharedPtr::Store()");
+    target.PrintMe("AtomicSharedPtr::Store: Before IncrementStrong");
     target.IncrementStrong();
     StampedPtr<T> stamped_ptr = ToStampedPtr(target);
     StampedPtr<T> old_stamped_ptr = atomic_stamped_ptr_.Exchange(stamped_ptr);
     SharedPtr<T> old_shared_ptr = ToSharedPtr(old_stamped_ptr);
-    // Уменьшаем ссс, потому что забираем объект из владения AtomicStampedPtr.
-    // А так же сводим транзитивный счётчик: counter.transient + stamped_ptrstamp
+    old_shared_ptr.PrintMe("AtomicSharedPtr::Store: Before old_shared_ptr.IncrementCounter(-1, old_stamped_ptr.stamp)");
     old_shared_ptr.IncrementCounter(-1, old_stamped_ptr.stamp);
   }
 
@@ -262,10 +282,47 @@ class AtomicSharedPtr {
     return Load();
   }
 
-  bool CompareExchangeWeak(SharedPtr<T>& expected, SharedPtr<T> desired) {
-    StampedPtr<T> old_stamped_ptr = AcquireTransientRef();
+  bool CompareExchangeWeak2(SharedPtr<T>& expected, SharedPtr<T> desired) {
+    StampedPtr<T> newptr = ToStampedPtr(desired);
+    StampedPtr<T> oldptr = AcquireTransientRef();
+    Ll("AtomicSharedPtr::CompareExchangeWeak: oldptr.stamp: %d", oldptr.stamp);
+    if ((void*)oldptr.raw_ptr != (void*)expected.ctrl_ptr) {
+      expected = ToSharedPtr(oldptr);
+      expected.PrintMe("AtomicSharedPtr::CompareExchangeWeak: Before expected.DecrementTransient();");
+      expected.DecrementTransient();
+      return false;
+    }
+    StampedPtr<T> expectedptr = oldptr;
+    if (atomic_stamped_ptr_.CompareExchangeWeak(expectedptr, newptr)) {
+      desired.PrintMe("AtomicSharedPtr::CompareExchangeWeak: Before desired.IncrementStrong();");
+      desired.IncrementStrong();
+      expected = ToSharedPtr(expectedptr);
+      expected.PrintMe("AtomicSharedPtr::CompareExchangeWeak: Before expected.IncrementCounter(-1, oldptr.stamp - 1);");
+      expected.IncrementCounter(-1, oldptr.stamp - 1);
+      // expected.PrintMe("CompareExchangeWeak ok, expected");
+      return true;
+    } else {
+      if (oldptr.raw_ptr != nullptr) {
+        expected = ToSharedPtr(oldptr);
+        expected.PrintMe("AtomicSharedPtr::CompareExchangeWeak: Before expected.DecrementTransient();");
+        expected.DecrementTransient();
+      } else {
+        Ll("AtomicSharedPtr::CompareExchangeWeak: Before expected = SharedPtr<T>();");
+        expected = SharedPtr<T>();
+      }
+      return false;
+    }
+  }
 
+
+  bool CompareExchangeWeak(SharedPtr<T>& expected, SharedPtr<T> desired) {
+    Ll("AtomicSharedPtr::CompareExchangeWeak()");
+    //SharedPtr<T> old_shared_ptr = Load();
+    //auto expected_copy = expected;
+    //expected.IncrementStrong();
+    StampedPtr<T> old_stamped_ptr = AcquireTransientRef();
     if ((void*)old_stamped_ptr.raw_ptr != (void*)expected.ctrl_ptr) {
+      Ll("AtomicSharedPtr:: if ((void*)old_stamped_ptr.raw_ptr != (void*)expected.ctrl_ptr)");
       expected = ToSharedPtr(old_stamped_ptr);
       expected.DecrementTransient();
       return false;
@@ -274,21 +331,27 @@ class AtomicSharedPtr {
     StampedPtr<T> exp_stamp_ptr = ToStampedPtr(expected, old_stamped_ptr.stamp);
     StampedPtr<T> des_stamp_ptr = ToStampedPtr(desired);
     bool success = atomic_stamped_ptr_.CompareExchangeWeak(exp_stamp_ptr, des_stamp_ptr);
-    if (success) {
-      // Увеличиваем ссс, потому что передаём владение объекта desired в AtomicStampedPtr
-      desired.IncrementStrong();
-      // Уменьшаем ссс, потому что забрали объект expected из хранилища AtomicStampedPtr
-      expected.IncrementCounter(-1, old_stamped_ptr.stamp - 1);
-    } else {
+    Ll("Success: %d", (int)success);
+    if (!success) {
+      //expected.Reset();
       SharedPtr<T> old_shared_ptr = ToSharedPtr(old_stamped_ptr);
       old_shared_ptr.DecrementTransient();
+      //exp_stamp_ptr = atom_stamp_ptr_.Load();
+      //expected = ToSharedPtr(exp_stamp_ptr);
+      //SharedPtr<T> expected = Load();
+      //expected.DecrementStrong();
       expected = Load();
+    } else {
+      desired.IncrementStrong();
+      expected.IncrementCounter(-1, old_stamped_ptr.stamp - 1);
+      expected.PrintMe("CompareExchangeWeak ok, expected");
     }
     return success;
   }
 
  private:
   AtomicStampedPtr<T> atomic_stamped_ptr_;
+  twist::ed::stdlike::mutex mtx_;
 
  private:
   StampedPtr<T> ToStampedPtr(SharedPtr<T>& shared_ptr, uint64_t stamp = 0) {
