@@ -11,6 +11,22 @@
 
 using namespace exe;
 
+  void Ll(const char* format, ...) {
+    const bool k_should_print = true;
+    if (!k_should_print) {
+      return;
+    }
+
+    char buf [250];
+    std::ostringstream pid;
+    pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+    sprintf(buf, "%s Test::%s\n", pid.str().c_str(), format);
+    va_list args;
+    va_start(args, format);
+    vprintf(buf, args);
+    va_end(args);
+  }
+
 //////////////////////////////////////////////////////////////////////
 
 void StressTest() {
@@ -26,19 +42,27 @@ void StressTest() {
 
     for (size_t i = 0; i < waiters; ++i) {
       fibers::Go(scheduler, [&] {
+        auto fiber = exe::fibers::Fiber::Self();
+        fiber->name = "Waiter #" + std::to_string(fiber->GetId());
+        Ll("Wait-Routine: starts, id: %lu, fiber: %p, name: %s", fiber->GetId(), fiber, fiber->name.c_str());
         event.Wait();
         ASSERT_TRUE(work);
         ++acks;
+        Ll("Wait-Routine: ends, id: %lu, fiber: %p, name: %s", fiber->GetId(), fiber, fiber->name.c_str());
       });
     }
 
     fibers::Go(scheduler, [&] {
+      auto fiber = exe::fibers::Fiber::Self();
+      fiber->name = "Firer #" + std::to_string(fiber->GetId());
+      Ll("Fire-Routine: id: %lu, name: %s", fiber->GetId(), fiber->name.c_str());
       work = true;
       event.Fire();
     });
 
     scheduler.WaitIdle();
 
+    printf("acks.load(): %lu, waiters: %lu\n", acks.load(), waiters);
     ASSERT_EQ(acks.load(), waiters);
   }
 

@@ -5,7 +5,7 @@
 namespace exe::fibers {
 
 struct IAwaiter {
-  // Your AwaitSuspend goes here
+  virtual void AwaitSuspend(Fiber* fiber) = 0;
 };
 
 }  // namespace exe::fibers

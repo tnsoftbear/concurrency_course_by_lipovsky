@@ -1,37 +1,174 @@
 #include <exe/tp/thread_pool.hpp>
 
-#include <twist/ed/local/ptr.hpp>
+#include <twist/ed/local/var.hpp>
 
 #include <wheels/core/panic.hpp>
+#include "exe/tp/task.hpp"
 
 namespace exe::tp {
 
-ThreadPool::ThreadPool(size_t /*threads*/) {
-  // Not implemented
-}
+static twist::ed::ThreadLocalPtr<ThreadPool> current_pool;
 
-void ThreadPool::Start() {
-  // Not implemented
+ThreadPool::ThreadPool(size_t thread_total)
+    : thread_total_(thread_total),
+      is_running_(false),
+      worker_routine_wait_counter_(0),
+      completed_tasks_(0),
+      submitted_tasks_(0),
+      processing_tasks_(0) {
+  Ll("Construct: threads %lu", thread_total);
+  workers_.reserve(thread_total_);
 }
 
 ThreadPool::~ThreadPool() {
-  // Not implemented
+  assert(tasks_.IsEmpty());
+  assert(tasks_.IsClosed());
+  Ll("Destructed");
 }
 
-void ThreadPool::Submit(Task /*task*/) {
-  // Not implemented
+// Пул должен быть запущен с помощью явного вызова метода Start
+void ThreadPool::Start() {
+  Ll("Start: enter");
+  if (thread_total_ == 0) {
+    return;
+  }
+
+  for (size_t i = 0; i < thread_total_; ++i) {
+    workers_.emplace_back([this]() {
+      WorkerRoutine();
+    });
+  }
 }
 
+// Запланировать задачу на исполнение в пуле
+// Вызов Submit не дожидается завершения задачи, он лишь добавляет ее в очередь
+// задач пула, после чего возвращает управление. Метод Submit можно вызывать из
+// разных потоков, без внешней синхронизации.
+void ThreadPool::Submit(Task task) {
+  Ll("Submit: enter");
+  incomplete_task_wg_.Add(1);
+  tasks_.Put(std::move(task));
+  is_running_.store(true);
+  submitted_tasks_.fetch_add(1);
+  {
+    // clippy target tp_stress_tests FaultyFibers --suite WaitIdle --test Series
+    std::unique_lock<mutex> lock(worker_routine_mtx_);
+    worker_routine_cv_.notify_one();
+  }
+  Ll("Submit: end");
+}
+
+void ThreadPool::WorkerRoutine() {
+  Ll("WorkerRoutine: enter");
+  current_pool = this;
+  while (true) {
+    Ll("WorkerRoutine: before tasks_.Take()");
+    std::optional<Task> opt_task = tasks_.Take();
+    Ll("WorkerRoutine: before opt_task.has_value(): %d", (int)opt_task.has_value());
+    if (opt_task.has_value()) {
+      processing_tasks_.fetch_add(1);
+      // size_t s = submitted_tasks_.load();
+      // size_t c = completed_tasks_.load();
+      // size_t p = processing_tasks_.load();
+      // size_t t = tasks_.Count();
+      // if (s != c + p + t) {
+      //   Ll("WorkerRoutine: >>>>>>> submitted[%lu] != completed[%lu]+processing[%lu]+tasks[%lu] ", s, c, p, t);
+      // }
+      Ll("WorkerRoutine: before opt_task.value()();");
+      Task task = std::move(opt_task.value());
+      task();
+      processing_tasks_.fetch_sub(1);
+      Ll("WorkerRoutine: after task()");
+      incomplete_task_wg_.Done();
+      completed_tasks_.fetch_add(1);
+      Ll("WorkerRoutine: wg_.Done()");
+    } else if (!is_running_.load()) {
+      break;
+    }
+
+    {
+      std::unique_lock<mutex> lock(worker_routine_mtx_);
+      worker_routine_wait_counter_.fetch_add(1);
+      Ll("WorkerRoutine: Before wait");
+      worker_routine_cv_.wait(lock, [&]() {
+        return !tasks_.IsEmpty() || !is_running_.load();
+      });
+      Ll("WorkerRoutine: After wait");
+      worker_routine_wait_counter_.fetch_sub(1);
+    }
+  }
+}
+
+// Метод Current возвращает
+// указатель на текущий пул, если его вызвали из потока-воркера, и
+// nullptr в противном случае.
 ThreadPool* ThreadPool::Current() {
-  return nullptr;  // Not implemented
+  return current_pool;
 }
 
+// Метод WaitIdle блокирует вызвавший его поток до тех пор, пока в пуле не
+// закончатся задачи. Метод WaitIdle можно вызвать несколько раз, а можно не
+// вызывать ни разу. Метод не изменяет состояние пула, он только наблюдает за
+// ним.
 void ThreadPool::WaitIdle() {
-  // Not implemented
+  Ll("WaitIdle: enter");
+  incomplete_task_wg_.Wait();
+  Ll("WaitIdle: after wait");
 }
 
+// Пул должен быть остановлен до своего разрушения явно с помощью метода Stop.
+// Вызов Stop возвращает управление, когда все потоки пула остановлены.
+// Вызвать метод Stop можно только один раз.
+// Вызов Stop для пула означает, что новые задачи в него планироваться больше не
+// будут.
 void ThreadPool::Stop() {
-  // Not implemented
+  Ll("Stop: enter");
+
+  is_running_.store(false);
+  tasks_.Close();
+  {
+    // Важный лок, без него мы пошлём сигнал нотификации между проверкой на
+    // уснуть и wait, таким образом нотификация будет пропущена и поток уснёт
+    // навсегда.
+    std::lock_guard<mutex> lock(worker_routine_mtx_);
+    worker_routine_cv_.notify_all();
+  }
+
+  size_t i = 0;
+  for (auto& worker : workers_) {
+    i++;
+    Ll("Stop: before worker.join, i: %lu", i);
+    worker.join();
+    Ll("Stop: after worker.join, i: %lu", i);
+  }
+  workers_.clear();
+  current_pool = nullptr;
+  //ctp_tid = "";
+  Ll("Stop: ended");
+}
+
+void ThreadPool::Ll(const char* format, ...) {
+  if (!exe::tp::kShouldPrint) {
+    return;
+  }
+
+  char buf[250];
+  std::ostringstream pid;
+  pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+  sprintf(buf,
+          "%s ThreadPool::%s, run: %d, qc: %lu, wg: %d, waits: %lu, submit: "
+          "%lu, complete: %lu, process: %lu\n",
+          pid.str().c_str(), format, (int)is_running_.load(), tasks_.Count(),
+          incomplete_task_wg_.GetCounter(), worker_routine_wait_counter_.load(),
+          submitted_tasks_.load(), completed_tasks_.load(),
+          processing_tasks_.load());
+  // sprintf(buf, "%s %s, run: %d, qc: %lu, wg: %d\n", pid.str().c_str(),
+  // format, (int)is_running_.load(), tasks_.Count(),
+  // incomplete_task_wg_.GetCounter());
+  va_list args;
+  va_start(args, format);
+  vprintf(buf, args);
+  va_end(args);
 }
 
 }  // namespace exe::tp

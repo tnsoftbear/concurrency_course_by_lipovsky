@@ -16,6 +16,22 @@ using namespace exe;
 
 using namespace std::chrono_literals;
 
+  void Ll(const char* format, ...) {
+    const bool k_should_print = true;
+    if (!k_should_print) {
+      return;
+    }
+
+    char buf [250];
+    std::ostringstream pid;
+    pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+    sprintf(buf, "%s Test::%s\n", pid.str().c_str(), format);
+    va_list args;
+    va_start(args, format);
+    vprintf(buf, args);
+    va_end(args);
+  }
+
 TEST_SUITE(Mutex) {
   SIMPLE_TEST(OneWaiter) {
     executors::ThreadPool scheduler{4};
@@ -28,7 +44,9 @@ TEST_SUITE(Mutex) {
     bool ok = false;
 
     fibers::Go(scheduler, [&] {
+      Ll("Before event.Wait();");
       event.Wait();
+      Ll("After event.Wait();");
       ASSERT_EQ(data, kMessage);
       ok = true;
     });
@@ -37,14 +55,18 @@ TEST_SUITE(Mutex) {
 
     fibers::Go(scheduler, [&] {
       data = kMessage;
+      Ll("Before event.Fire();");
       event.Fire();
+      Ll("After event.Fire();");
     });
 
+    Ll("Before scheduler.WaitIdle();");
     scheduler.WaitIdle();
 
     ASSERT_TRUE(ok);
 
     scheduler.Stop();
+    Ll("Ends");
   }
 
   SIMPLE_TEST(DoNotBlockThread) {

@@ -16,6 +16,23 @@ using namespace exe;
 
 using namespace std::chrono_literals;
 
+
+  void Ll(const char* format, ...) {
+    const bool k_should_print = true;
+    if (!k_should_print) {
+      return;
+    }
+
+    char buf [250];
+    std::ostringstream pid;
+    pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+    sprintf(buf, "%s Test::%s\n", pid.str().c_str(), format);
+    va_list args;
+    va_start(args, format);
+    vprintf(buf, args);
+    va_end(args);
+  }
+
 TEST_SUITE(Mutex) {
   SIMPLE_TEST(JustWorks) {
     executors::ThreadPool scheduler{4};
@@ -33,6 +50,7 @@ TEST_SUITE(Mutex) {
 
     scheduler.WaitIdle();
 
+    Ll("cs: %lu", cs);
     ASSERT_EQ(cs, 11);
 
     scheduler.Stop();
@@ -45,14 +63,19 @@ TEST_SUITE(Mutex) {
     fibers::Mutex mutex;
     size_t cs = 0;
 
+    // static const size_t kFibers = 10;
+    // static const size_t kSectionsPerFiber = 1024;
     static const size_t kFibers = 10;
     static const size_t kSectionsPerFiber = 1024;
 
     for (size_t i = 0; i < kFibers; ++i) {
       fibers::Go(scheduler, [&] {
         for (size_t j = 0; j < kSectionsPerFiber; ++j) {
+          Ll("Before std::lock_guard guard(mutex);");
           std::lock_guard guard(mutex);
+          Ll("Before ++cs;");
           ++cs;
+          Ll("For iteration ends, j: %lu", j);
         }
       });
     }
