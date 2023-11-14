@@ -18,7 +18,7 @@ using namespace std::chrono_literals;
 
 
   void Ll(const char* format, ...) {
-    const bool k_should_print = true;
+    const bool k_should_print = false;
     if (!k_should_print) {
       return;
     }

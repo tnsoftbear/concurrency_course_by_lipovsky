@@ -11,8 +11,8 @@
 
 namespace exe::fibers {
 
-//const bool kShouldPrint = false;
-const bool kShouldPrint = true;
+const bool kShouldPrint = false;
+//const bool kShouldPrint = true;
 
 static twist::ed::ThreadLocalPtr<Fiber> current_fiber = nullptr;
 static size_t fiber_id = 0;

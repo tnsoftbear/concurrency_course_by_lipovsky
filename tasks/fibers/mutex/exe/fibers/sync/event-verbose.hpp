@@ -1,11 +1,14 @@
 #pragma once
 
-#include <twist/ed/stdlike/atomic.hpp>
-
-#include "exe/support/msqueue.hpp"
-#include "exe/fibers/core/fiber.cpp"
+#include <exe/support/queue.hpp>
+#include <exe/support/msqueue.hpp>
+#include <exe/fibers/core/fiber.cpp>
 #include "exe/fibers/core/awaiter.hpp"
+#include "exe/fibers/sched/yield.hpp"
+#include "exe/fibers/sched/go.hpp"
 #include "exe/threads/spinlock.hpp"
+#include <twist/ed/wait/spin.hpp>
+#include <twist/ed/stdlike/atomic.hpp>
 
 namespace exe::fibers {
 
@@ -28,6 +31,7 @@ class Event {
     void AwaitSuspend(Fiber* fiber) {
       event_.lock_.Lock();
       if (!event_.is_fired_.load()) {
+        event_.Ll("AwaitSuspend: Before Put(), id: %lu", fiber->GetId());
         event_.wait_q_.Put(std::move(fiber));
         event_.lock_.Unlock();
         return;
@@ -40,22 +44,36 @@ class Event {
 
  public:
   void Wait() {
+    // if (is_fired_.load()) {
+    //   Ll("Wait: Don't sleep anymore");
+    //   return;
+    // }
+
+    Fiber* fiber = Fiber::Self();
+    size_t id = fiber->GetId();
+    Ll("Wait: Before Suspend(), id: %lu", id);
     EventAwaiter awaiter{*this};
-    Fiber::Self()->Suspend(&awaiter);
+    fiber->Suspend(&awaiter);
+    Ll("Wait: ends, id: %lu", id);
   }
 
   void Fire() {
     lock_.Lock();
     is_fired_.store(true);
+    Ll("Fire: Before while, wait_q_.size: %lu", wait_q_.Count());
     bool is_empty = wait_q_.IsEmpty();
     lock_.Unlock();
-
+    
     while (!is_empty) {
       std::optional<Fiber*> fiber_opt = wait_q_.Take();
       is_empty = wait_q_.IsEmpty();
       Fiber* fiber = std::move(fiber_opt.value());
+      auto id = fiber->GetId();
+      Ll("Fire: Before Schedule(), id: %lu", id);
       fiber->Schedule();
+      Ll("Fire: Complete loop iteration, id: %lu", id);
     }
+    Ll("Fire: ends");
   }
 
   void Ll(const char* format, ...) {

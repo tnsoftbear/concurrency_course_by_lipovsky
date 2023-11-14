@@ -12,7 +12,7 @@
 using namespace exe;
 
   void Ll(const char* format, ...) {
-    const bool k_should_print = true;
+    const bool k_should_print = false;
     if (!k_should_print) {
       return;
     }
@@ -62,7 +62,7 @@ void StressTest() {
 
     scheduler.WaitIdle();
 
-    printf("acks.load(): %lu, waiters: %lu\n", acks.load(), waiters);
+    Ll("acks.load(): %lu, waiters: %lu", acks.load(), waiters);
     ASSERT_EQ(acks.load(), waiters);
   }
 
