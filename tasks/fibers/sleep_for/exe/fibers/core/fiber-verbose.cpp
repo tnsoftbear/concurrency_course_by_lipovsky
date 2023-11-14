@@ -60,7 +60,7 @@ void Fiber::MarkSleep() {
   status_ = Status::Sleeping;
 }
 
-void Fiber::Wake() {
+void Fiber::WakeAndRun() {
   Ll("Wake");
   status_ = Status::Runnable;
   Run(); 

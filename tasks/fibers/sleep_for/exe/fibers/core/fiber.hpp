@@ -20,7 +20,7 @@ class Fiber {
   static Fiber* Self();
 
   void MarkSleep();
-  void Wake();
+  void WakeAndRun();
   void Suspend();
   void Ll(const char* format, ...);
 

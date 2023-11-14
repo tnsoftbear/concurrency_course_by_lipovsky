@@ -18,7 +18,7 @@ void SleepFor(Millis delay) {
   );
   asio::defer(fiber->GetScheduler(), [fiber, &t]() {
     t.async_wait([fiber](const asio::error_code) {
-      fiber->Wake();
+      fiber->WakeAndRun();
     });
   });
   exe::fibers::Yield();
