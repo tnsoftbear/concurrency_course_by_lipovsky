@@ -1,8 +1,8 @@
 #pragma once
 
-#include <exe/support/msqueue.hpp>
-#include <exe/fibers/core/fiber.cpp>
-#include "exe/fibers/sched/yield.hpp"
+#include "exe/support/msqueue.hpp"
+#include "exe/fibers/core/fiber.cpp"
+#include "exe/fibers/core/awaiter.hpp"
 #include "exe/threads/spinlock.hpp"
 
 // std::lock_guard and std::unique_lock
@@ -15,36 +15,13 @@ using WaitQueue = exe::support::MSQueue<Fiber*>;
 class Mutex {
  public:
   void Lock() {
-    if (!is_locked_.load()) {
-      is_locked_.store(true);
-      return;
-    }
-    Fiber* fiber = Fiber::Self();
-    auto id = fiber->GetId();
-    fiber->MarkSleep();
-    Ll("Lock: Before Put(), id: %lu", id);
-    lock_.Lock();
-    wait_q_.Put(std::move(fiber));
-    lock_.Unlock();
-    Ll("Lock: Before Yield(), id: %lu", id);
-    Yield();
-    Ll("Lock: ends, id: %lu", id);
+    LockAwaiter awaiter{*this};
+    Fiber::Self()->Suspend(&awaiter);
   }
 
   void Unlock() {
-    lock_.Lock();
-    if (wait_q_.IsEmpty()) {
-      is_locked_.store(false);
-      lock_.Unlock();
-      return;
-    }
-    std::optional<Fiber*> fiber_opt = wait_q_.Take();
-    lock_.Unlock();
-    Fiber* fiber = std::move(fiber_opt.value());
-    auto id = fiber->GetId();
-    Ll("Unlock: Before WakeAndRun(), id: %lu", id);
-    fiber->WakeAndRun();
-    Ll("Unlock: ends, id: %lu", id);
+    UnlockAwaiter awaiter{*this};
+    Fiber::Self()->Suspend(&awaiter);
   }
 
   // BasicLockable
@@ -58,12 +35,73 @@ class Mutex {
   }
 
  private:
-  WaitQueue wait_q_;
-  atomic<bool> is_locked_{false};
-  exe::threads::SpinLock lock_;
+  WaitQueue park_q_;
+  enum Status {
+    None = 0,
+    LockedNoWaiter = 1,
+    LockedWithWaiters = 2,
+  };
+  atomic<Status> st_{Status::None};
+  exe::threads::SpinLock mtx_;
+
+  class LockAwaiter : public IAwaiter {
+    private:
+      Mutex& mutex_;
+    public:
+      explicit LockAwaiter(Mutex& host) : mutex_(host) {};
+      void AwaitSuspend(Fiber* acquire_lock_fiber) {
+        while (true) {
+          auto expected = Status::None;
+          if (mutex_.st_.compare_exchange_strong(expected, Status::LockedNoWaiter)) {
+            acquire_lock_fiber->Run();
+            return;
+          }
+
+          expected = Status::LockedNoWaiter;
+          mutex_.mtx_.Lock();
+          if (
+            mutex_.st_.load() == Status::LockedWithWaiters
+            || mutex_.st_.compare_exchange_strong(expected, Status::LockedWithWaiters)
+          ) {
+            mutex_.park_q_.Put(std::move(acquire_lock_fiber));
+            mutex_.mtx_.Unlock();
+            return;
+          }
+          mutex_.mtx_.Unlock();
+        }
+      }
+  };
+
+  class UnlockAwaiter : public IAwaiter {
+    private:
+      Mutex& mutex_;
+    public:
+      explicit UnlockAwaiter(Mutex& host) : mutex_(host) {};
+      void AwaitSuspend(Fiber* release_lock_fiber) {
+        auto expected = Status::LockedNoWaiter;
+        if (mutex_.st_.compare_exchange_strong(expected, Status::None)) {
+          release_lock_fiber->Run();
+          return;
+        }
+        
+        mutex_.mtx_.Lock();
+        std::optional<Fiber*> unparked_fiber_opt = mutex_.park_q_.Take();
+        Fiber* unparked_fiber = std::move(unparked_fiber_opt.value());
+        mutex_.st_.store(mutex_.park_q_.IsEmpty()
+          ? Status::LockedNoWaiter
+          : Status::LockedWithWaiters
+        );
+        mutex_.mtx_.Unlock();
+
+        unparked_fiber->Schedule();
+        
+        release_lock_fiber->Run();
+      }
+  };
 
   void Ll(const char* format, ...) {
-    const bool k_should_print = true;
+    const bool k_should_print = false;
+    //const bool k_should_print = true;
     if (!k_should_print) {
       return;
     }
@@ -71,7 +109,7 @@ class Mutex {
     char buf [250];
     std::ostringstream pid;
     pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
-    sprintf(buf, "%s Event::%s\n", pid.str().c_str(), format);
+    sprintf(buf, "%s Mutex::%s\n", pid.str().c_str(), format);
     va_list args;
     va_start(args, format);
     vprintf(buf, args);

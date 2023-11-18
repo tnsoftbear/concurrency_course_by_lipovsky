@@ -17,21 +17,22 @@ using namespace exe;
 using namespace std::chrono_literals;
 
 
-  void Ll(const char* format, ...) {
-    const bool k_should_print = false;
-    if (!k_should_print) {
-      return;
-    }
-
-    char buf [250];
-    std::ostringstream pid;
-    pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
-    sprintf(buf, "%s Test::%s\n", pid.str().c_str(), format);
-    va_list args;
-    va_start(args, format);
-    vprintf(buf, args);
-    va_end(args);
+void Ll(const char* format, ...) {
+  //const bool k_should_print = true;
+  const bool k_should_print = false;
+  if (!k_should_print) {
+    return;
   }
+
+  char buf [250];
+  std::ostringstream pid;
+  pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+  sprintf(buf, "%s Test::%s\n", pid.str().c_str(), format);
+  va_list args;
+  va_start(args, format);
+  vprintf(buf, args);
+  va_end(args);
+}
 
 TEST_SUITE(Mutex) {
   SIMPLE_TEST(JustWorks) {
@@ -62,20 +63,26 @@ TEST_SUITE(Mutex) {
 
     fibers::Mutex mutex;
     size_t cs = 0;
+    //atomic<size_t> acs{0};
 
-    // static const size_t kFibers = 10;
-    // static const size_t kSectionsPerFiber = 1024;
     static const size_t kFibers = 10;
     static const size_t kSectionsPerFiber = 1024;
 
     for (size_t i = 0; i < kFibers; ++i) {
       fibers::Go(scheduler, [&] {
         for (size_t j = 0; j < kSectionsPerFiber; ++j) {
-          Ll("Before std::lock_guard guard(mutex);");
+          auto id = exe::fibers::Fiber::Self()->GetId();
+          Ll("Routine: std::lock_guard guard(mutex);, id: %d", id);
           std::lock_guard guard(mutex);
-          Ll("Before ++cs;");
+          Ll("Routine: Before ++cs, id: %d", id);
           ++cs;
-          Ll("For iteration ends, j: %lu", j);
+          // ++acs;
+          // if (cs != acs) {
+          //   Ll("Routine: cs != acs !!!!!!!!!!!!!!!!, id: %d", id);
+          //   ASSERT_EQ(cs, acs.load());
+          //   cs = acs.load();
+          // }
+          Ll("Routine: For iteration ends, j: %lu, id: %d", j, id);
         }
       });
     }
@@ -100,13 +107,19 @@ TEST_SUITE(Mutex) {
     wheels::ProcessCPUTimer cpu_timer;
 
     fibers::Go(scheduler, [&] {
+      auto id = exe::fibers::Fiber::Self()->GetId();
       mutex.Lock();
+      Ll("Sleeping-Routine: before std::this_thread::sleep_for(1s);, id: %lu", id);
       std::this_thread::sleep_for(1s);
+      Ll("Sleeping-Routine: before mutex.Unlock();, id: %lu", id);
       mutex.Unlock();
     });
 
     fibers::Go(scheduler, [&] {
+      auto id = exe::fibers::Fiber::Self()->GetId();
+      Ll("Non-Sleeping-Routine: before mutex.Lock();, id: %lu", id);
       mutex.Lock();
+      Ll("Non-Sleeping-Routine: before mutex.Unlock();, id: %lu", id);
       mutex.Unlock();
     });
 

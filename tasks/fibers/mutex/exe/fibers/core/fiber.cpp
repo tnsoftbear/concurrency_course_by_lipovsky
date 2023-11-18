@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <mutex>
+#include <string>
 #include <twist/ed/local/ptr.hpp>
 
 #include <map>
@@ -25,6 +26,7 @@ Fiber::Fiber(Scheduler& scheduler, Routine routine)
   ))
   , id_(++fiber_id)
 {
+  name = "#" + std::to_string(id_);
   Ll("Fiber: created");
 }
 
@@ -36,6 +38,7 @@ void Fiber::Run() {
   Ll("Run: starts");
   current_fiber = this;
   coro_->Resume();
+  Ll("Run: after coro_->Resume();");
   
   if (coro_->IsCompleted()) {
     Ll("Run: before delete this;");
@@ -46,6 +49,7 @@ void Fiber::Run() {
   auto awaiter = std::exchange(awaiter_, nullptr);
   Ll("Run: awaiter->AwaitSuspend(this)");
   awaiter->AwaitSuspend(this);
+  Ll("Run: ends");
 }
 
 Fiber* Fiber::Self() {
@@ -53,20 +57,20 @@ Fiber* Fiber::Self() {
 }
 
 void Fiber::Schedule() {
-  exe::tp::Submit(scheduler_, [&]() { 
-    Ll("Schedule: Fiber's routine before Run()");
+  exe::tp::Submit(scheduler_, [&] { 
+    Ll("Scheduled: Routine before Run()");
     Run(); 
   });
 }
 
 void Fiber::Suspend(IAwaiter* awaiter) {
-  Ll("Suspend: awaiter: %p", awaiter);
+  Ll("Suspend: starts, register awaiter and coro_->Suspend();");
   awaiter_ = awaiter;
   coro_->Suspend();
 }
 
 void Fiber::Switch() {
-  // Not implemented
+  awaiter_->AwaitSuspend(this);
 }
 
 void Fiber::Ll(const char* format, ...) {
