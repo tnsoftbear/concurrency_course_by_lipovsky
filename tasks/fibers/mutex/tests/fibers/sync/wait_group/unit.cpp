@@ -12,6 +12,23 @@
 
 using namespace exe;
 
+void Ll(const char* format, ...) {
+  //const bool k_should_print = true;
+  const bool k_should_print = false;
+  if (!k_should_print) {
+    return;
+  }
+
+  char buf [250];
+  std::ostringstream pid;
+  pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+  sprintf(buf, "%s Test::%s\n", pid.str().c_str(), format);
+  va_list args;
+  va_start(args, format);
+  vprintf(buf, args);
+  va_end(args);
+}
+
 TEST_SUITE(WaitGroup) {
   SIMPLE_TEST(OneWaiter) {
     executors::ThreadPool scheduler{/*threads=*/5};
@@ -26,16 +43,22 @@ TEST_SUITE(WaitGroup) {
     wg.Add(kWorkers);
 
     fibers::Go(scheduler, [&] {
+      Ll("Wait-routine: starts");
       wg.Wait();
       ASSERT_EQ(work.load(), kWorkers);
       ok = true;
+      Ll("Wait-routine: ends");
     });
 
     for (size_t i = 0; i < kWorkers; ++i) {
       fibers::Go(scheduler, [&] {
+        Ll("Done-routine: starts");
         std::this_thread::sleep_for(1s);
+        Ll("Done-routine: ++work");
         ++work;
+        Ll("Done-routine: wg.Done()");
         wg.Done();
+        Ll("Done-routine: ends");
       });
     }
 

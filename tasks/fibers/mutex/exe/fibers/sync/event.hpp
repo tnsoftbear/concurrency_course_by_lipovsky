@@ -15,6 +15,31 @@ using twist::ed::stdlike::atomic;
 // One-shot
 
 class Event {
+
+ public:
+  void Wait() {
+    /**
+     * Awaiter - это способ выполнить действия не до вызова Suspend(), находясь в контексте пользовательской рутины,
+     * а после высзова Suspend(), когда управление передаётся контексту коллера, который вызывает файбер Run()
+     */
+    EventAwaiter awaiter{*this};
+    Fiber::Self()->Suspend(&awaiter);
+  }
+
+  void Fire() {
+    lock_.Lock();
+    is_fired_.store(true);
+    bool is_empty = wait_q_.IsEmpty();
+    lock_.Unlock();
+
+    while (!is_empty) {
+      std::optional<Fiber*> fiber_opt = wait_q_.Take();
+      is_empty = wait_q_.IsEmpty();
+      Fiber* fiber = std::move(fiber_opt.value());
+      fiber->Schedule();
+    }
+  }
+
  private:
   WaitQueue wait_q_;
   exe::threads::SpinLock lock_;
@@ -37,27 +62,8 @@ class Event {
       fiber->Schedule();
     }
   };
-
- public:
-  void Wait() {
-    EventAwaiter awaiter{*this};
-    Fiber::Self()->Suspend(&awaiter);
-  }
-
-  void Fire() {
-    lock_.Lock();
-    is_fired_.store(true);
-    bool is_empty = wait_q_.IsEmpty();
-    lock_.Unlock();
-
-    while (!is_empty) {
-      std::optional<Fiber*> fiber_opt = wait_q_.Take();
-      is_empty = wait_q_.IsEmpty();
-      Fiber* fiber = std::move(fiber_opt.value());
-      fiber->Schedule();
-    }
-  }
-
+  
+ private:
   void Ll(const char* format, ...) {
     const bool k_should_print = true;
     if (!k_should_print) {

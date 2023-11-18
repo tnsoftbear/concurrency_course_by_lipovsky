@@ -25,11 +25,15 @@ using WaitQueue = exe::support::MSQueue<Fiber*>;
 class WaitGroup {
  public:
   void Add(size_t count) {
+    Ll("Add: count: %lu ------------------------- ", count);
     done_calls_countdown_.fetch_add(count);
   }
 
   void Done() {
+    auto id = Fiber::Self()->GetId();
+    Ll("Done: starts, id: %lu", id);
     if (done_calls_countdown_.fetch_sub(1) == 1) {
+      Ll("Done: rescheduling queued");
       
       mtx_.Lock();
       bool is_empty = wait_q_.IsEmpty();
@@ -42,26 +46,34 @@ class WaitGroup {
       }
 
       while (!is_empty) {
+        Ll("Done: while iteration starts");
         std::optional<Fiber*> fiber_opt = wait_q_.Take();
         is_empty = wait_q_.IsEmpty();
         if (is_empty) {
+          Ll("Done: queue is empty, before decrease counter to 0");
           // Установка флага для выполнения последнего AwaitSuspend() происходит до перепланировки этого файбера,
           // потому что иначе логика файбера может успеть выполниться, рутина завершиться с удалением группы ожидания
           // и мы попытаемся записать свойство в удалённом объекте (но это не случай, когда WaitGroupAwaiter ждёт на спине)
           is_last_wait_completed_.store(true);
         }
         Fiber* fiber = std::move(fiber_opt.value());
+        Ll("Done: before fiber->Schedule(), dequeued-id: %lu", fiber->GetId());
         // возобновляем приостановленный Wait() (после fiber->Suspend(&awaiter);)
         fiber->Schedule();
       }
     }
+    Ll("Done: ends, id: %lu", id);
   }
 
   void Wait() {
+    auto fiber = Fiber::Self();
+    auto id = fiber->GetId();
     suspended_waits_counter_++;
     WaitGroupAwaiter awaiter{*this};
-    Fiber::Self()->Suspend(&awaiter);
+    Ll("Wait: before fiber->Suspend(), id: %lu", id);
+    fiber->Suspend(&awaiter);
     suspended_waits_counter_--;
+    Ll("Wait: ends, id: %lu", id);
   }
 
  private:
@@ -92,6 +104,7 @@ class WaitGroup {
         std::lock_guard lock(wg.mtx_);
         if (wg.done_calls_countdown_.load() != 0) {
           wg.wait_q_.Put(std::move(fiber));
+          wg.Ll("AwaitSuspend: Put in queue, id: %lu", fiber->GetId());
           return true;
         }
         return false;
@@ -111,11 +124,13 @@ class WaitGroup {
         if (wg.suspended_waits_counter_.load() == 1) {
           twist::ed::SpinWait spin_wait;
           while (!wg.is_last_wait_completed_.load()) {
+            wg.Ll("AwaitSuspend: spin, id: %lu", fiber->GetId());
             spin_wait();
           }
         }
 
         // Запланировать завершение файбера.
+        wg.Ll("AwaitSuspend: fiber->Schedule();");
         fiber->Schedule();
       }
   };

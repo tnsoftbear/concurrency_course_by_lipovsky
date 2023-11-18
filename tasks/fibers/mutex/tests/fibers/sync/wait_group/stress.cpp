@@ -18,6 +18,23 @@ using namespace std::chrono_literals;
 
 //////////////////////////////////////////////////////////////////////
 
+void Ll(const char* format, ...) {
+  //const bool k_should_print = true;
+  const bool k_should_print = false;
+  if (!k_should_print) {
+    return;
+  }
+
+  char buf [250];
+  std::ostringstream pid;
+  pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+  sprintf(buf, "%s Test::%s\n", pid.str().c_str(), format);
+  va_list args;
+  va_start(args, format);
+  vprintf(buf, args);
+  va_end(args);
+}
+
 void StressTest() {
   executors::ThreadPool scheduler{/*threads=*/4};
   scheduler.Start();
@@ -27,6 +44,7 @@ void StressTest() {
   while (repeat()) {
     size_t workers = twist::test::Random(1, 4);
     size_t waiters = twist::test::Random(1, 4);
+    Ll("Test: workers: %lu, waiters: %lu", workers, waiters);
 
     std::array<bool, 5> work;
     work.fill(false);
@@ -59,6 +77,7 @@ void StressTest() {
 
     scheduler.WaitIdle();
 
+    Ll("Result: acks: %lu, waiters: %lu", acks.load(), waiters);
     ASSERT_EQ(acks.load(), waiters);
   }
 
