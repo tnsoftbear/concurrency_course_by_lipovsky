@@ -4,6 +4,23 @@
 
 //////////////////////////////////////////////////////////////////////
 
+void Ll(const char* format, ...) {
+  const bool k_should_print = true;
+  if (!k_should_print) {
+    return;
+  }
+
+  char buf[250];
+  std::ostringstream pid;
+  pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+  sprintf(buf, "%s Test::%s\n", pid.str().c_str(), format);
+  va_list args;
+  va_start(args, format);
+  vprintf(buf, args);
+  va_end(args);
+}
+
+
 struct TestObject {
   int data;
 };
@@ -80,19 +97,25 @@ TEST_SUITE(WorkStealingQueue) {
     WorkStealingQueue<TestObject, 33> q;
 
     for (int i = 0; i < 33; ++i) {
+      Ll("ASSERT_TRUE, i: %lu", i);
       ASSERT_TRUE(q.TryPush(new TestObject{i}));
     }
 
     {
       TestObject* overflow = new TestObject{34};
 
+      Ll("ASSERT_FALSE");
       ASSERT_FALSE(q.TryPush(overflow));
+      Ll("ASSERT_FALSE");
       ASSERT_FALSE(q.TryPush(overflow));
 
+      Ll("delete overflow");
       delete overflow;
     }
 
+    Ll("Cleanup");
     Cleanup(q);
+    Ll("Ends");
   }
 
   SIMPLE_TEST(Wrap) {
