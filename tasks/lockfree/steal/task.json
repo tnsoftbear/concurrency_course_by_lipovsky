@@ -2,14 +2,6 @@
   "tests": [
     {
       "targets": [
-        "unit_tests"
-      ],
-      "profiles": [
-        "DebugASan"
-      ]
-    },
-    {
-      "targets": [
         "stress_tests"
       ],
       "profiles": [

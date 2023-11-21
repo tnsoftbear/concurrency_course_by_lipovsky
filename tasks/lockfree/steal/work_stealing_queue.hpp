@@ -26,7 +26,16 @@ using twist::ed::stdlike::atomic;
  Вероятно, это решает проблему ABA при стравнении значения в CAS. Иначе, счётчик мог прокрутить круг и привести к неверным выводам из-за ложного совпадения значений.
  Аналогичное решение можно видеть здесь:
 https://gitlab.com/Lipovsky/await/-/blob/master/await/tasks/exe/pools/fast/queues/work_stealing_queue.hpp?ref_type=heads
+
+ Про мемори-ордеринги:
+https://www.codeproject.com/Articles/43510/Lock-Free-Single-Producer-Single-Consumer-Circular?msg=4970744#xx4970744xx
 */ 
+
+std::memory_order relaxed = std::memory_order_relaxed;
+std::memory_order acquire = std::memory_order_acquire;
+std::memory_order release = std::memory_order_release;
+// std::memory_order  = std::memory_order_;
+// std::memory_order  = std::memory_order_;
 
 template <typename T, size_t Capacity>
 class WorkStealingQueue {
@@ -42,29 +51,29 @@ class WorkStealingQueue {
     if (IsFull()) {
       return false;
     }
-    size_t current_tail = tail_.load();
-    buffer_[ToIndex(current_tail)].item.store(item);
-    tail_.store(current_tail + 1);
+    size_t current_tail = tail_.load(relaxed);
+    buffer_[ToIndex(current_tail)].item.store(item, relaxed);
+    tail_.store(current_tail + 1, release);
     return true;
   }
 
   /* Consumer only: updates head index after retrieving the element */
   T* TryPop() {
-    size_t current_head = head_.load();
+    size_t current_head = head_.load(relaxed);
     while (true) {
       if (IsEmpty()) {
         return nullptr;
       }
 
-      T* item = buffer_[ToIndex(current_head)].item.load();
-      if (head_.compare_exchange_strong(current_head, current_head + 1)) {
+      T* item = buffer_[ToIndex(current_head)].item.load(relaxed);
+      if (head_.compare_exchange_strong(current_head, current_head + 1, release)) {
         return item;
       }
     }
   }
 
   size_t Grab(std::span<T*> out_buffer) {
-    size_t current_head = head_.load();
+    size_t current_head = head_.load(relaxed);
 
     while (true) {
       size_t element_count = CountElements();
@@ -75,10 +84,10 @@ class WorkStealingQueue {
       size_t to_grab = out_buffer.size() < element_count ? out_buffer.size() : element_count;
       for (size_t i = 0; i < to_grab; ++i) {
         size_t index = ToIndex(current_head + i);
-        out_buffer[i] = buffer_[index].item.load();
+        out_buffer[i] = buffer_[index].item.load(relaxed);
       }
       
-      if (head_.compare_exchange_strong(current_head, current_head + to_grab)) {
+      if (head_.compare_exchange_strong(current_head, current_head + to_grab, release)) {
         return to_grab;
       }
     }
@@ -91,11 +100,11 @@ class WorkStealingQueue {
 
  private:
   bool IsEmpty() const {
-    return head_.load() == tail_.load();
+    return head_.load(relaxed) == tail_.load(relaxed);
   }
 
   bool IsFull() const {
-    return tail_.load() - head_.load() == Capacity;
+    return tail_.load(relaxed) - head_.load(relaxed) == Capacity;
   }
 
   size_t Increment(size_t value) const {
@@ -103,7 +112,7 @@ class WorkStealingQueue {
   }
 
   size_t CountElements() const {
-    return tail_.load() - head_.load();
+    return tail_.load(acquire) - head_.load(acquire);
   }
 
   static size_t ToIndex(size_t pos) {
