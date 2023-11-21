@@ -12,7 +12,8 @@
 #include <iostream>
 
 void Ll(const char* format, ...) {
-  const bool k_should_print = true;
+  //const bool k_should_print = true;
+  const bool k_should_print = false;
   if (!k_should_print) {
     return;
   }
@@ -94,6 +95,7 @@ void StressTest() {
           TestObject* obj_to_push = obj_maker.Get();
           size_t obj_value = obj_to_push->value;
 
+          Ll("Push-Test: queues[%lu]", i);
           if (queues_[i]->TryPush(obj_to_push)) {
             random += obj_value;
             produced_cs.fetch_add(obj_value, std::memory_order_relaxed);
@@ -109,11 +111,15 @@ void StressTest() {
         if ((iter + i) % 5 == 0) {
           size_t steal_target = random % Queues;  // Pseudo-random target
 
+          Ll("Grab-Test: queues[%lu]", steal_target);
           size_t stolen = queues_[steal_target]->Grab({steal_buffer, 5});
 
           for (size_t s = 0; s < stolen; ++s) {
             stolen_cs.fetch_add(steal_buffer[s]->value, std::memory_order_relaxed);
+            //printf("Grab-Test: delete steal_buffer[s];\n");
+            //Ll("Grab-Test: delete %lu", steal_buffer[s]->value);
             delete steal_buffer[s];
+            //printf("Grab-Test: deleted\n");
           }
           continue;
         }
@@ -124,9 +130,13 @@ void StressTest() {
           continue;
         }
 
+        //Ll("Pop-Test: queues[%lu]", i);
         if (TestObject* obj = queues_[i]->TryPop()) {
           consumed_cs.fetch_add(obj->value, std::memory_order_relaxed);
+          //printf("Pop-Test: delete obj;\n");
+          //Ll("Pop-Test: delete %lu", obj->value);
           delete obj;
+          //printf("Pop-Test: deleted\n");
         }
       }
 
@@ -134,6 +144,7 @@ void StressTest() {
 
       while (TestObject* obj = queues_[i]->TryPop()) {
         consumed_cs += obj->value;
+        //Ll("Cleanup-Test: delete %lu", obj->value);
         delete obj;
       }
     });

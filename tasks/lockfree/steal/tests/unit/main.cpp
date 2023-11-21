@@ -5,7 +5,8 @@
 //////////////////////////////////////////////////////////////////////
 
 void Ll(const char* format, ...) {
-  const bool k_should_print = true;
+  //const bool k_should_print = true;
+  const bool k_should_print = false;
   if (!k_should_print) {
     return;
   }
@@ -80,12 +81,14 @@ TEST_SUITE(WorkStealingQueue) {
     WorkStealingQueue<TestObject, 128> q;
 
     for (int i = 0; i < 64; ++i) {
+      Ll("ASSERT_TRUE, i: %lu", i);
       ASSERT_TRUE(q.TryPush(new TestObject{i}));
     }
 
     for (int i = 0; i < 64; ++i) {
       TestObject* obj = q.TryPop();
 
+      Ll("ASSERT_TRUE(obj != nullptr), i: %lu", i);
       ASSERT_TRUE(obj != nullptr);
       ASSERT_EQ(obj->data, i);
 
@@ -126,11 +129,14 @@ TEST_SUITE(WorkStealingQueue) {
     }
 
     for (int i = 6; i < 256; ++i) {
+      //printf("ASSERT_TRUE(q.TryPush(new TestObject{%d}));\n", i);
       ASSERT_TRUE(q.TryPush(new TestObject{i}));
       {
         TestObject* obj = q.TryPop();
 
+        //printf("ASSERT_TRUE(obj != nullptr);\n");
         ASSERT_TRUE(obj != nullptr);
+        //printf("ASSERT_EQ(obj->data: %d, i - 6: %d);\n", obj->data, i - 6);
         ASSERT_EQ(obj->data, i - 6);
 
         delete obj;
