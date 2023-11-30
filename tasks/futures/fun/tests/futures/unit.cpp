@@ -46,6 +46,8 @@ std::error_code IoError() {
 struct MoveOnly {
   MoveOnly() = default;
   MoveOnly(const MoveOnly&) = delete;
+  // MoveOnly(const MoveOnly&) = default;
+  // MoveOnly& operator=(const MoveOnly&) = default;
   MoveOnly(MoveOnly&&) {};
 };
 

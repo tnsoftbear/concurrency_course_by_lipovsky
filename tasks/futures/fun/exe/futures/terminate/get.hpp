@@ -8,10 +8,21 @@ namespace exe::futures {
 
 namespace pipe {
 
+/**
+Терминатор `Get` блокирует текущий поток до готовности результата:
+```
+// Планируем задачу в пул потоков и дожидаемся результата
+Result<int> r = futures::Submit(pool, [] {
+  return result::Ok(7);
+}) | futures::Get();
+```
+Иначе говоря, `Get` синхронно "распаковывает" `Future` в `Result`.
+*/
+
 struct [[nodiscard]] Get {
   template <typename T>
-  Result<T> Pipe(Future<T>) {
-    std::abort();  // Not implemented
+  Result<T> Pipe(Future<T> f) {
+    return std::move(f).Get();
   }
 };
 

@@ -3,6 +3,9 @@
 #include <cstdlib>
 #include <utility>
 
+#include <exe/futures/state/shared_state.hpp>
+using exe::futures::details::SharedState;
+
 namespace exe::futures {
 
 template <typename T>
@@ -17,9 +20,19 @@ struct [[nodiscard]] Future {
   Future& operator=(Future&) = delete;
 
   // Movable
-  Future(Future&&) {
-    // Not implemented
+  Future(Future&& f)
+      : ss(f.ss) {
   }
+
+  explicit Future(std::shared_ptr<SharedState<T>> ss)
+      : ss(ss) {
+  }
+
+  Result<T> Get() {
+    return ss->Get();
+  }
+
+  std::shared_ptr<SharedState<T>> ss;
 };
 
 }  // namespace exe::futures

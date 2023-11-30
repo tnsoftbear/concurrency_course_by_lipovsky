@@ -2,9 +2,16 @@
 
 #include <exe/executors/executor.hpp>
 
+#include <exe/support/msqueue.hpp>
+#include <exe/threads/spinlock.hpp>
+
 namespace exe::executors {
 
 // Strand / serial executor / asynchronous mutex
+
+using exe::threads::SpinLock;
+using twist::ed::stdlike::atomic;
+using TaskQueue = exe::support::MSQueue<Task>;
 
 class Strand : public IExecutor {
  public:
@@ -18,11 +25,22 @@ class Strand : public IExecutor {
   Strand(Strand&&) = delete;
   Strand& operator=(Strand&&) = delete;
 
+  ~Strand();
+
   // IExecutor
   void Submit(Task cs) override;
 
  private:
-  // ???
+  void Ll(const char* format, ...);
+  void SubmitSelf();
+  size_t RunTasks(TaskQueue& processing_tasks);
+  void Run();
+
+ private:
+  IExecutor& underlying_;
+  TaskQueue tasks_;
+  SpinLock lock_;
+  size_t id_;
 };
 
 }  // namespace exe::executors

@@ -6,7 +6,9 @@
 namespace exe::futures {
 
 inline Future<Unit> Just() {
-  std::abort();  // Not implemented
+  std::shared_ptr<SharedState<Unit>> ss = std::make_shared<SharedState<Unit>>();
+  ss->Clear();
+  return Future<Unit>(ss);
 }
 
 }  // namespace exe::futures
