@@ -17,8 +17,7 @@ using twist::ed::stdlike::atomic;
 
 class WaitGroup {
  public:
-  explicit WaitGroup(uint32_t init = 0) 
-    : init_{init} {}
+  explicit WaitGroup() {}
 
   void Add(size_t count) {
     counter_.fetch_add(count, std::memory_order_relaxed);
@@ -26,14 +25,12 @@ class WaitGroup {
 
   // =- 1
   void Done() {
-    // check - необходимо посчитать заранее. 
-    // Иначе мы сталкиваемся с ситуацией, когда первый поток сделал a.fetch_sub(), а второй поток зашел в Wait, 
+    // Иначе мы сталкиваемся с ситуацией, когда первый поток сделал a.fetch_sub(), а второй поток зашел в Wait (см. тест внизу), 
     // вышел из цикла по брейку, вышел из Wait ф-ции и в коллере убил объект WaitGroup, потому что Wait всё. 
     // Далее первый поток обращается к свойству init в объекте которого нет.
     // Т.е. при таком фиксе стресс тесты с адрес-санитайзером проходят в контексте фреймворка Липовского twist.
     // Но меня терзают сомнения, что оно будет рабоать в реале, ведь внутри ифа мы всё ещё обращаемся к свойству убитого объекта: a.notify_all().
-    uint32_t check = init_ + 1;
-    if (counter_.fetch_sub(1, std::memory_order_acq_rel) == check) {
+    if (counter_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
       twist::ed::futex::WakeKey k = twist::ed::futex::PrepareWake(counter_);
       twist::ed::futex::WakeAll(k);
     }
@@ -42,7 +39,7 @@ class WaitGroup {
   void Wait() {
     while (true) {
       uint32_t c = counter_.load(std::memory_order_acquire);
-      if (c == init_) { 
+      if (c == 0) { 
         break;
       }
       twist::ed::futex::Wait(counter_, c, std::memory_order_relaxed);
@@ -55,12 +52,11 @@ class WaitGroup {
 
  private:
   atomic<uint32_t> counter_{0};
-  uint32_t init_{0};
-  bool should_print_{false};
 
  private:
   void Ll(const char* format, ...) {
-    if (!should_print_) {
+    bool should_print{false};
+    if (!should_print) {
       return;
     }
 
@@ -74,3 +70,22 @@ class WaitGroup {
     va_end(args);
   }
 };
+
+/**
+
+void StorageTest() {
+  // Help AddressSanitizer
+  auto* wg = new WaitGroup{};
+
+  wg->Add(1);
+  twist::ed::stdlike::thread t([wg] {
+    wg->Done();
+  });
+
+  wg->Wait();
+  delete wg;
+
+  t.join();
+}
+
+*/

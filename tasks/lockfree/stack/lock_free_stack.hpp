@@ -15,9 +15,9 @@
 
 using twist::ed::stdlike::atomic;
 
-std::memory_order acq = std::memory_order_acquire;
+std::memory_order acquire = std::memory_order_acquire;
 std::memory_order rel = std::memory_order_release;
-std::memory_order rlx = std::memory_order_relaxed;
+std::memory_order relaxed = std::memory_order_relaxed;
 std::memory_order seq = std::memory_order_seq_cst;
 
 template <typename T>
@@ -35,7 +35,7 @@ class LockFreeStack {
     Node* new_node = new Node(std::move(item));
     StampedPtr<Node> new_head = StampedPtr<Node>{new_node, 0};
     new_head->next = head_.Load();
-    while (!head_.CompareExchangeWeak(new_head->next, new_head, rel, rlx)) {};
+    while (!head_.CompareExchangeWeak(new_head->next, new_head, rel, relaxed)) {};
   }
 
   std::optional<T> TryPop() {
@@ -46,11 +46,11 @@ class LockFreeStack {
         if (!old_head) {
           return std::nullopt;
         }
-      } while (!head_.CompareExchangeWeak(old_head, old_head.IncrementStamp(), acq, rlx));
+      } while (!head_.CompareExchangeWeak(old_head, old_head.IncrementStamp(), acquire, relaxed));
       old_head = old_head.IncrementStamp();
 
       auto tmp_head = old_head;
-      if (head_.CompareExchangeWeak(tmp_head, old_head->next, acq, rlx)) {
+      if (head_.CompareExchangeWeak(tmp_head, old_head->next, acquire, relaxed)) {
         T value = std::move(old_head->value);
         int res = 1 - old_head.stamp;
         if (old_head->inner_counter.fetch_add(old_head.stamp - 1) == res) {

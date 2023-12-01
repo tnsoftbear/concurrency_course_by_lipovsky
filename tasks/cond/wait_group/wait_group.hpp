@@ -14,20 +14,18 @@ using twist::ed::stdlike::atomic;
 
 class WaitGroup {
  public:
-  explicit WaitGroup(uint32_t init = 0) 
-    : init_{init}
-    {}
+  explicit WaitGroup() {}
 
   // += count
   void Add(size_t count) {
-    if (counter_.fetch_add(count) == init_) {
+    if (counter_.fetch_add(count) == 0) {
       done_.store(0);
     }
   }
 
   // =- 1
   void Done() {
-    if (counter_.fetch_sub(1) - 1 == init_) {
+    if (counter_.fetch_sub(1) - 1 == 0) {
       done_.store(1);
       twist::ed::futex::WakeKey k = twist::ed::futex::PrepareWake(done_);
       twist::ed::futex::WakeAll(k);
@@ -37,7 +35,12 @@ class WaitGroup {
   // == 0
   // One-shot
   void Wait() {
-    while (counter_.load() != init_) {
+    // a) while необходим для решения проблемы spurious wake up.
+    // b) while условие обязательно на свойстве done_, а не counter_.load() != 0, иначе возможна следующая гонка (см. тест внизу);
+    // Поток-1 начинает Done() и уменьшает счётчик counter_ до 0, 
+    // Поток-2 коллера входит в Wait(), видит счётчик 0, выходит из Wait(), удаляет объект WaitGroup.
+    // Поток-1 продолжает выполнение ф-ции Done(), где пытается писать в свойство done_.store(1) для уже удалённого объекта this.
+    while (done_.load() == 0) {
       twist::ed::futex::Wait(done_, 0);
     }
   }
@@ -49,7 +52,6 @@ class WaitGroup {
  private:
   atomic<uint32_t> counter_{0};
   atomic<uint32_t> done_{1};
-  uint32_t init_{0};
   bool should_print_{true};
 
  private:
@@ -68,3 +70,21 @@ class WaitGroup {
     va_end(args);
   }
 };
+
+/**
+
+void StorageTest() {
+  auto* wg = new WaitGroup{};
+
+  wg->Add(1);
+  twist::ed::stdlike::thread t([wg] {
+    wg->Done();
+  });
+
+  wg->Wait();
+  delete wg;
+
+  t.join();
+}
+
+*/
