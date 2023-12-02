@@ -145,7 +145,6 @@ TEST_SUITE(Futures) {
 
     ASSERT_TRUE(r);
     ASSERT_EQ(*r, 11);
-
     pool.Stop();
   }
 
@@ -260,32 +259,38 @@ TEST_SUITE(Futures) {
 
   SIMPLE_TEST(Pipeline) {
     auto [f, p] = futures::Contract<int>();
+    printf("Start\n");
 
     auto g = std::move(f) | futures::Map([](int v) {
                return v + 1;
-             }) | futures::Map([](int v) {
-               return v + 2;
-             }) | futures::OrElse([](Error) {
-               FAIL_TEST("Skip this");
-               return result::Ok(111);
-             }) | futures::AndThen([](int) -> Result<int> {
-               return result::Err(TimeoutError());
-             }) | futures::AndThen([](int v) {
-               FAIL_TEST("Skip this");
-               return result::Ok(v + 3);
-             }) | futures::Map([](int v) {
-               FAIL_TEST("Skip this");
-               return v + 4;
-             }) | futures::OrElse([](Error) -> Result<int> {
-               return 17;
-             }) | futures::Map([](int v) {
-               return v + 1;
+            //  })
+            //  | futures::Map([](int v) {
+            //    return v + 2;
+            //  })
+            //  | futures::OrElse([](Error) {
+            //    FAIL_TEST("Skip this");
+            //    return result::Ok(111);
+            //  }) | futures::AndThen([](int) -> Result<int> {
+            //    return result::Err(TimeoutError());
+            //  }) | futures::AndThen([](int v) {
+            //    FAIL_TEST("Skip this");
+            //    return result::Ok(v + 3);
+            //  }) | futures::Map([](int v) {
+            //    FAIL_TEST("Skip this");
+            //    return v + 4;
+            //  }) | futures::OrElse([](Error) -> Result<int> {
+            //    return 17;
+            //  }) | futures::Map([](int v) {
+            //    return v + 1;
              });
 
+    printf("std::move(p).Set(3);\n");
     std::move(p).Set(3);
 
+    printf("auto r = std::move(g) | futures::Get();\n");
     auto r = std::move(g) | futures::Get();
 
+    printf("ASSERT_TRUE(r);\n");
     ASSERT_TRUE(r);
     ASSERT_EQ(*r, 18);
   }

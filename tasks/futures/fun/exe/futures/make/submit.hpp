@@ -18,14 +18,11 @@ using SubmitT = result::traits::ValueOf<std::invoke_result_t<F>>;
 
 template <typename F>
 Future<traits::SubmitT<F>> Submit(executors::IExecutor& exe, F fun) {
-  std::shared_ptr<SharedState<traits::SubmitT<F>>> ss = std::make_shared<SharedState<traits::SubmitT<F>>>();
-  ss->Clear();
-  // [ss]{
-  //   ss->Set fun();
-  // }
-  // return Future<T>(ss);  
-  exe.Submit(fun);
-  return Future<traits::SubmitT<F>>(ss);
+  auto [f, p] = Contract<traits::SubmitT<F>>();
+  exe.Submit([p = std::move(p), fun = std::move(fun)]() mutable {
+    std::move(p).Set(fun());
+  });
+  return std::move(f);
 }
 
 }  // namespace exe::futures

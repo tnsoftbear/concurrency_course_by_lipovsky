@@ -7,9 +7,14 @@ namespace exe::futures {
 
 template <typename T>
 Future<T> Value(T v) {
-  std::shared_ptr<SharedState<T>> ss = std::make_shared<SharedState<T>>();
-  ss->SetValue(std::move(v));
-  return Future<T>(ss);
+  auto [f, p] = Contract<T>();
+  std::move(p).SetValue(v);
+  return std::move(f);
 }
 
 }  // namespace exe::futures
+
+
+// std::shared_ptr<SharedState<T>> ss = std::make_shared<SharedState<T>>();
+// ss->SetValue(std::move(v));
+// return Future<T>(ss);

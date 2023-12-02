@@ -223,6 +223,8 @@ auto f = futures::Just()
 
 Выражение `f(a) | h(x, y)` переписывается оператором `|` в `h(f(a), x, y)`
 
+`f(a) | h(x, y) | g(z)` -> `g(h(f(a), x, y), z)`
+
 Пример применения в С++ – [`ranges`](https://en.cppreference.com/w/cpp/ranges)
 
 Поддержка `|` для фьюч: [futures/syntax/pipe.hpp](exe/futures/syntax/pipe.hpp)

@@ -15,8 +15,13 @@ struct [[nodiscard]] OrElse {
   }
 
   template <typename T>
-  Future<T> Pipe(Future<T>) {
-    std::abort();  // Not implemented
+  Future<T> Pipe(Future<T> input_future) {
+    auto [f, p] = Contract<T>();
+    // Result<T> input_future_result = input_future.Get();
+    // Result<T> result = fun(input_future_result.error());
+    // std::move(p).Set(result);
+    std::move(p).Set(fun(input_future.Get().error()));
+    return std::move(f);
   }
 };
 
@@ -26,6 +31,7 @@ struct [[nodiscard]] OrElse {
 
 template <typename F>
 auto OrElse(F fun) {
+  printf("OrElse\n");
   return pipe::OrElse{std::move(fun)};
 }
 

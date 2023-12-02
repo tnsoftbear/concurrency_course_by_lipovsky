@@ -14,10 +14,10 @@ template <typename T>
 class Promise {
  public:
   void Set(Result<T> result) && {
-    if (result.error()) {
-      ss_->SetError(std::move(result.error()));
-    } else {
+    if (result) {
       ss_->SetValue(std::move(result.value()));
+    } else {
+      ss_->SetError(std::move(result.error()));
     }
   }
 
@@ -35,6 +35,23 @@ class Promise {
 
  private:
   std::shared_ptr<SharedState<T>> ss_ = std::make_shared<SharedState<T>>();
+
+
+  void Ll(const char* format, ...) {
+    bool const k_should_print = true;
+    if (!k_should_print) {
+      return;
+    }
+
+    char buf[250];
+    std::ostringstream pid;
+    pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+    sprintf(buf, "%s Promise::%s\n", pid.str().c_str(), format);
+    va_list args;
+    va_start(args, format);
+    vprintf(buf, args);
+    va_end(args);
+  }
 };
 
 template <typename T>

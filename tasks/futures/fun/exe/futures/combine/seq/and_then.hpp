@@ -25,8 +25,13 @@ struct [[nodiscard]] AndThen {
   using U = result::traits::ValueOf<std::invoke_result_t<F, T>>;
 
   template <typename T>
-  Future<U<T>> Pipe(Future<T>) {
-    std::abort();  // Not implemented
+  Future<U<T>> Pipe(Future<T> input_future) {
+    auto [f, p] = Contract<U<T>>();
+    // Result<T> input_future_result = input_future.Get();
+    // Result<T> result = fun(input_future_result.value());
+    // std::move(p).Set(result);
+    std::move(p).Set(fun(input_future.Get().value()));
+    return std::move(f);
   }
 };
 

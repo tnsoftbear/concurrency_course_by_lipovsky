@@ -29,6 +29,7 @@ struct [[nodiscard]] Future {
   }
 
   Result<T> Get() {
+    printf("Future::Get()\n");
     return ss->Get();
   }
 

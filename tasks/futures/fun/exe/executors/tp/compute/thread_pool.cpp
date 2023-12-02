@@ -6,7 +6,7 @@
 
 namespace exe::executors::tp::compute {
 
-// const bool kShouldPrint = true;
+//const bool kShouldPrint = true;
 const bool kShouldPrint = false;
 
 static twist::ed::ThreadLocalPtr<ThreadPool> current_pool;
@@ -23,9 +23,10 @@ ThreadPool::ThreadPool(size_t thread_total)
 }
 
 ThreadPool::~ThreadPool() {
+  Ll("~ThreadPool() starts");
   assert(tasks_.IsEmpty());
   assert(tasks_.IsClosed());
-  Ll("Destructed");
+  Ll("~ThreadPool() Destructed");
 }
 
 void ThreadPool::Start() {
@@ -73,6 +74,7 @@ void ThreadPool::WorkerRoutine() {
       completed_tasks_.fetch_add(1);
       Ll("WorkerRoutine: wg_.Done()");
     } else if (!is_running_.load()) {
+      Ll("WorkerRoutine: break (is_running_ == false)");
       break;
     }
 
@@ -87,6 +89,7 @@ void ThreadPool::WorkerRoutine() {
       worker_routine_wait_counter_.fetch_sub(1);
     }
   }
+  Ll("WorkerRoutine: ends");
 }
 
 ThreadPool* ThreadPool::Current() {
