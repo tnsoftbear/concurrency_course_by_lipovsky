@@ -12,4 +12,6 @@ struct IExecutor {
   virtual void Submit(Task task) = 0;
 };
 
+using IExecutorPtr = std::shared_ptr<IExecutor>;
+
 }  // namespace exe::executors

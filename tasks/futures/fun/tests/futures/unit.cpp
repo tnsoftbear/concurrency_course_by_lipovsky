@@ -31,9 +31,29 @@
 #include <tuple>
 #include <chrono>
 
+#include <cstdlib>
+#include <sstream>
+#include <twist/ed/stdlike/thread.hpp> // for debug logs
+
 using namespace exe;
 
 using namespace std::chrono_literals;
+
+void Ll(const char* format, ...) {
+  const bool should_print = true;
+  if (!should_print) {
+    return;
+  }
+
+  char buf [250];
+  std::ostringstream pid;
+  pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+  sprintf(buf, "%s Test::%s\n", pid.str().c_str(), format);
+  va_list args;
+  va_start(args, format);
+  vprintf(buf, args);
+  va_end(args);
+}
 
 std::error_code TimeoutError() {
   return std::make_error_code(std::errc::timed_out);
@@ -205,8 +225,10 @@ TEST_SUITE(Futures) {
   }
 
   SIMPLE_TEST(MapValue) {
+    bool ok = false;
     auto f = futures::Value(1)
-             | futures::Map([](int v) {
+             | futures::Map([&ok](int v) {
+                 ok = true;
                  return v + 1;
                });
 
@@ -214,6 +236,7 @@ TEST_SUITE(Futures) {
 
     ASSERT_TRUE(r);
     ASSERT_EQ(*r, 2);
+    ASSERT_TRUE(ok);
   }
 
   SIMPLE_TEST(MapError) {
@@ -261,27 +284,38 @@ TEST_SUITE(Futures) {
     auto [f, p] = futures::Contract<int>();
     printf("Start\n");
 
-    auto g = std::move(f) | futures::Map([](int v) {
+    auto g = std::move(f)
+             | futures::Map([](int v) {
+              printf("1] return v + 1;\n");
                return v + 1;
-            //  })
-            //  | futures::Map([](int v) {
-            //    return v + 2;
-            //  })
-            //  | futures::OrElse([](Error) {
-            //    FAIL_TEST("Skip this");
-            //    return result::Ok(111);
-            //  }) | futures::AndThen([](int) -> Result<int> {
-            //    return result::Err(TimeoutError());
-            //  }) | futures::AndThen([](int v) {
-            //    FAIL_TEST("Skip this");
-            //    return result::Ok(v + 3);
-            //  }) | futures::Map([](int v) {
-            //    FAIL_TEST("Skip this");
-            //    return v + 4;
-            //  }) | futures::OrElse([](Error) -> Result<int> {
-            //    return 17;
-            //  }) | futures::Map([](int v) {
-            //    return v + 1;
+             })
+             | futures::Map([](int v) {
+              printf("2] return v + 2;\n");
+               return v + 2;
+             })
+             | futures::OrElse([](Error) {
+               FAIL_TEST("Skip this");
+               return result::Ok(111);
+             }) 
+             | futures::AndThen([](int) -> Result<int> {
+              printf("3] return result::Err(TimeoutError());\n");
+               return result::Err(TimeoutError());
+             }) 
+             | futures::AndThen([](int v) {
+               FAIL_TEST("Skip this");
+               return result::Ok(v + 3);
+             }) 
+             | futures::Map([](int v) {
+               FAIL_TEST("Skip this");
+               return v + 4;
+             }) 
+             | futures::OrElse([](Error) -> Result<int> {
+              printf("4] return 17;\n");
+               return 17;
+             }) 
+             | futures::Map([](int v) {
+              printf("5] return v + 1;\n");
+               return v + 1;
              });
 
     printf("std::move(p).Set(3);\n");

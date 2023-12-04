@@ -26,12 +26,20 @@ struct [[nodiscard]] AndThen {
 
   template <typename T>
   Future<U<T>> Pipe(Future<T> input_future) {
+    printf("AndThen::Pipe() Starts\n");
     auto [f, p] = Contract<U<T>>();
-    // Result<T> input_future_result = input_future.Get();
-    // Result<T> result = fun(input_future_result.value());
-    // std::move(p).Set(result);
-    std::move(p).Set(fun(input_future.Get().value()));
-    return std::move(f);
+    //std::move(p).Set(fun(input_future.GetResult().value()));
+    input_future.Subscribe([p = std::move(p), fun = std::forward<F>(fun)](Result<T> result) mutable {
+      if (result.has_value()) {
+        printf("AndThen:: Routine starts\n");
+        std::move(p).Set(fun(result.value()));
+      } else {
+        printf("AndThen::Routine skip\n");
+        std::move(p).Set(result);
+      }
+    });
+
+    return std::move(f).Via(input_future.GetExecutor());
   }
 };
 

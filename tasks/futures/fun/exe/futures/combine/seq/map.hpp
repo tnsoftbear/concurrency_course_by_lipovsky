@@ -23,19 +23,19 @@ struct [[nodiscard]] Map {
   Future<U<T>> Pipe(Future<T> input_future) {
     printf("Map::Pipe(): starts\n");
     auto [f, p] = Contract<U<T>>();
-    printf("Map::Pipe(): auto input_future_result = input_future.Get();\n");
-    auto input_future_result = input_future.Get();
-    if (input_future_result) {
-      printf("Map::Pipe(): U<T> value = fun(input_future_result.value());\n");
-      U<T> value = fun(input_future_result.value());
-      printf("Map::Pipe(): std::move(p).SetValue(value);\n");
-      std::move(p).SetValue(value);
-    } else {
-      printf("Map::Pipe(): std::move(p).SetError(input_future_result.error());\n");
-      std::move(p).SetError(input_future_result.error());
-    }
-    printf("Map::Pipe(): return std::move(f);");
-    return std::move(f);
+    //auto f = std::move(f).Via(input_future.GetExecutor());
+    input_future.Subscribe([p = std::move(p), fun = std::forward<F>(fun)](Result<T> result) mutable {
+      if (result) {
+        printf("Map::Routine success;\n");
+        U<T> value = fun(result.value());
+        std::move(p).SetValue(value);
+      } else {
+        printf("Map::Routine failure;\n");
+        std::move(p).SetError(result.error());
+      }
+      printf("Map::Routine ends\n");
+    });
+    return std::move(f).Via(input_future.GetExecutor());
   }
 };
 
@@ -45,7 +45,6 @@ struct [[nodiscard]] Map {
 
 template <typename F>
 auto Map(F fun) {
-  printf("Map(F fun)\n");
   return pipe::Map{std::move(fun)};
 }
 

@@ -22,7 +22,7 @@ Result<int> r = futures::Submit(pool, [] {
 struct [[nodiscard]] Get {
   template <typename T>
   Result<T> Pipe(Future<T> f) {
-    return std::move(f).Get();
+    return std::move(f).GetResult();
   }
 };
 

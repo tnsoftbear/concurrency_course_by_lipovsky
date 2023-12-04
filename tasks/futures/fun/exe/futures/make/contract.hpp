@@ -3,6 +3,13 @@
 #include <exe/futures/types/future.hpp>
 #include <exe/result/types/result.hpp>
 
+#include <exe/result/make/err.hpp>
+#include "exe/executors/executor.hpp"
+#include "exe/executors/inline.hpp"
+using exe::result::Err;
+#include <exe/result/make/ok.hpp>
+using exe::result::Ok;
+
 #include <tuple>
 
 #include <exe/futures/state/shared_state.hpp>
@@ -14,28 +21,24 @@ template <typename T>
 class Promise {
  public:
   void Set(Result<T> result) && {
-    if (result) {
-      ss_->SetValue(std::move(result.value()));
-    } else {
-      ss_->SetError(std::move(result.error()));
-    }
+    ss_->SetResult(std::move(result));
   }
 
   void SetValue(T value) && {
-    ss_->SetValue(std::move(value));
+    ss_->SetResult(Ok(std::move(value)));
   }
 
   void SetError(Error err) && {
-    ss_->SetError(std::move(err));
+    ss_->SetResult(Err(std::move(err)));
   }
 
   Future<T> MakeFuture() {
+    ss_ = std::make_shared<SharedState<T>>();
     return Future<T>(ss_);
   }
 
  private:
-  std::shared_ptr<SharedState<T>> ss_ = std::make_shared<SharedState<T>>();
-
+  std::shared_ptr<SharedState<T>> ss_; // = std::make_shared<SharedState<T>>();
 
   void Ll(const char* format, ...) {
     bool const k_should_print = true;
@@ -53,6 +56,8 @@ class Promise {
     va_end(args);
   }
 };
+
+#include <typeinfo>
 
 template <typename T>
 std::tuple<Future<T>, Promise<T>> Contract() {

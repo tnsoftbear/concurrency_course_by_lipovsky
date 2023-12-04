@@ -19,8 +19,11 @@ futures::Submit(pool, [] {
 
 struct [[nodiscard]] Detach {
   template <typename T>
-  void Pipe(Future<T> f) {
-    f.ss->Clear();
+  void Pipe(Future<T> /* input_feature */) {
+    // input_feature.Subscribe([](Result<T>){
+
+    // });
+    //f.ss_->Clear();
   }
 };
 

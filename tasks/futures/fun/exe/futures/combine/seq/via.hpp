@@ -12,8 +12,8 @@ struct [[nodiscard]] Via {
   executors::IExecutor& executor;
 
   template <typename T>
-  Future<T> Pipe(Future<T>) {
-    std::abort();  // Not implemented
+  Future<T> Pipe(Future<T> input_future) {
+    return std::move(input_future).Via(executor);
   }
 };
 

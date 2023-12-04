@@ -16,12 +16,19 @@ struct [[nodiscard]] OrElse {
 
   template <typename T>
   Future<T> Pipe(Future<T> input_future) {
+    printf("OrElse::Pipe(): starts\n");
     auto [f, p] = Contract<T>();
-    // Result<T> input_future_result = input_future.Get();
-    // Result<T> result = fun(input_future_result.error());
-    // std::move(p).Set(result);
-    std::move(p).Set(fun(input_future.Get().error()));
-    return std::move(f);
+    //std::move(p).Set(fun(input_future.GetResult().error()));
+    input_future.Subscribe([p = std::move(p), fun = std::forward<F>(fun)](Result<T> result) mutable {
+      if (!result.has_value()) {
+        printf("OrElse::Routine starts\n");
+        std::move(p).Set(fun(result.error()));
+      } else {
+        printf("OrElse::Routine skip\n");
+        std::move(p).Set(result);
+      }
+    });
+    return std::move(f).Via(input_future.GetExecutor());
   }
 };
 
@@ -31,7 +38,6 @@ struct [[nodiscard]] OrElse {
 
 template <typename F>
 auto OrElse(F fun) {
-  printf("OrElse\n");
   return pipe::OrElse{std::move(fun)};
 }
 

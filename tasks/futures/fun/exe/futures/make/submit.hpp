@@ -19,10 +19,15 @@ using SubmitT = result::traits::ValueOf<std::invoke_result_t<F>>;
 template <typename F>
 Future<traits::SubmitT<F>> Submit(executors::IExecutor& exe, F fun) {
   auto [f, p] = Contract<traits::SubmitT<F>>();
-  exe.Submit([p = std::move(p), fun = std::move(fun)]() mutable {
+  // std::move(f).Via(exe).Subscribe(
+  //   [p = std::move(p), fun = std::move(fun)]() mutable {
+  //     std::move(p).Set(fun());
+  //   }
+  // );
+  exe.Submit([p = std::move(p), fun = std::forward<F>(fun)]() mutable {
     std::move(p).Set(fun());
   });
-  return std::move(f);
+  return std::move(f).Via(exe);
 }
 
 }  // namespace exe::futures
