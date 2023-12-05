@@ -24,14 +24,16 @@
  IK: Хотя какой exchange здесь может быть, если атомики запрещены?
  
  В решениях лекций 2021, 2022 годов Strand наследовался от std::enable_shared_from_this<Strand>, 
- чтобы передать `self = shared_from_this()` в лямбду уходящую в пул потоков, 
- видимо, чтобы продлить время жизни стренда до окончания исполнения Run().
+ чтобы создать шаред-пойнтер на себя и передать его в лямбду уходящую в пул потоков (`self = shared_from_this()`), 
+ чтобы продлить время жизни стренда до окончания исполнения `Run()`.
  Но сейчас такое решение падает с ошибкой:
  Test 'Robots_1' FAILED ¯\_(ツ)_/¯: Test subprocess terminated by signal 6, stderr: 
  Panicked at /tmp/clippy-build/FaultyFibers/_deps/twist-src/twist/rt/layer/fiber/runtime/fiber.cpp
  :virtual void twist::rt::fiber::Fiber::Run()[Line 32]: Uncaught exception in fiber #11: bad_weak_ptr
 
- Так же в лекциях присутствует решение Р.Липовского со спинлоком, см. bak/strand-spinlock.cpp, оно не работает.
+ Так же в лекциях присутствует решение Р.Липовского со спинлоком, см. bak/strand-spinlock.cpp, оно падает с ошибкой:
+ Panicked at /tmp/clippy-build/FaultyFibers/_deps/twist-src/twist/rt/layer/fiber/runtime/fiber.cpp
+ :virtual void twist::rt::fiber::Fiber::Run()[Line 32]: Uncaught exception in fiber #3: bad_optional_access 
  */
 
 namespace exe::executors {
