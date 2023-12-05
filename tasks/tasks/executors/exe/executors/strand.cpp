@@ -6,22 +6,32 @@
 // using twist::ed::stdlike::atomic;
 
 /**
- * Алгоритм этого решения скопирован из await fw.
- * https://gitlab.com/Lipovsky/await/-/blob/master/await/tasks/exe/strand.cpp?ref_type=heads
- * Но он не помогает решить проблему, с которой я столкнулся в других решениях,
- * которая проявляется в тесте: clippy target strand_lifetime_tests FaultyFibersASan
- * После завершения задачи, объект странда удаляется из памяти, потому что в этом тесте был сделан automation.reset() 
- * См. /workspace/concurrency-course/tasks/tasks/executors/tests/executors/strand/lifetime.cpp
- * А т.к. this удалён, мы больше не можем обращаться к свойствам объекта и принимать по ним решения.
- * В данном случае речь идёт о счётчике scheduled, по которому мы решаем продолжать ли обслуживать очередь ожидания задач или нет.
- * Поэтому я вынес этот счётчик в статическую память в мапу. 
- * Кроме того, приходится использовать std :: atomic вместо twist/atomic, 
- * потому что я не знаю, как инициализировать атомики из твиста, когда они в мапе, чтобы это работало для FaultyFibers.
- * В итоге решение не выглядит ожидаемо верным. Надо убрать атомики и статические переменные.
- *
- * Подсказки:
- * RL: Если вы не используете exchange, вы пишете плохой стренд.
- * IK: Хотя какой exchange здесь может быть, если атомики запрещены?
+ Алгоритм этого решения скопирован из await fw.
+ https://gitlab.com/Lipovsky/await/-/blob/master/await/tasks/exe/strand.cpp?ref_type=heads
+ Но он не помогает решить проблему, с которой я столкнулся в других решениях,
+ которая проявляется в тесте: clippy target strand_lifetime_tests FaultyFibersASan
+ После завершения задачи, объект странда удаляется из памяти, потому что в этом тесте был сделан automation.reset() 
+ См. /workspace/concurrency-course/tasks/tasks/executors/tests/executors/strand/lifetime.cpp
+ А т.к. this удалён, мы больше не можем обращаться к свойствам объекта и принимать по ним решения.
+ В данном случае речь идёт о счётчике scheduled, по которому мы решаем продолжать ли обслуживать очередь ожидания задач или нет.
+ Поэтому я вынес этот счётчик в статическую память в мапу. 
+ Кроме того, приходится использовать std :: atomic вместо twist/atomic, 
+ потому что я не знаю, как инициализировать атомики из твиста, когда они в мапе, чтобы это работало для FaultyFibers.
+ В итоге решение не выглядит ожидаемо верным. Надо убрать атомики и статические переменные.
+ 
+ Подсказки:
+ RL: Если вы не используете exchange, вы пишете плохой стренд.
+ IK: Хотя какой exchange здесь может быть, если атомики запрещены?
+ 
+ В решениях лекций 2021, 2022 годов Strand наследовался от std::enable_shared_from_this<Strand>, 
+ чтобы передать `self = shared_from_this()` в лямбду уходящую в пул потоков, 
+ видимо, чтобы продлить время жизни стренда до окончания исполнения Run().
+ Но сейчас такое решение падает с ошибкой:
+ Test 'Robots_1' FAILED ¯\_(ツ)_/¯: Test subprocess terminated by signal 6, stderr: 
+ Panicked at /tmp/clippy-build/FaultyFibers/_deps/twist-src/twist/rt/layer/fiber/runtime/fiber.cpp
+ :virtual void twist::rt::fiber::Fiber::Run()[Line 32]: Uncaught exception in fiber #11: bad_weak_ptr
+
+ Так же в лекциях присутствует решение Р.Липовского со спинлоком, см. bak/strand-spinlock.cpp, оно не работает.
  */
 
 namespace exe::executors {
@@ -82,7 +92,6 @@ void Strand::Ll(const char* format, ...) {
   if (!kShouldPrint) {
     return;
   }
-
   char buf [250];
   std::ostringstream pid;
   pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";

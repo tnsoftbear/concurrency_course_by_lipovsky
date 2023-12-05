@@ -4,6 +4,10 @@
 
 #include <exe/support/msqueue.hpp>
 #include <exe/threads/spinlock.hpp>
+#include <memory>
+#include <twist/ed/stdlike/atomic.hpp>
+
+using twist::ed::stdlike::atomic;
 
 namespace exe::executors {
 
@@ -13,7 +17,8 @@ using twist::ed::stdlike::atomic;
 using exe::threads::SpinLock;
 using TaskQueue = exe::support::MSQueue<Task>;
 
-class Strand : public IExecutor
+class Strand
+  : public IExecutor
 {
  public:
   explicit Strand(IExecutor& underlying);
@@ -34,14 +39,13 @@ class Strand : public IExecutor
  private:
   void Ll(const char* format, ...);
   void SubmitSelf();
-  size_t RunTasks(TaskQueue& processing_tasks);
+  void RunTasks(TaskQueue& processing_tasks);
   void Run();
 
  private:
   IExecutor& underlying_;
   TaskQueue tasks_;
   SpinLock lock_;
-  size_t id_;
 };
 
 }  // namespace exe::executors
