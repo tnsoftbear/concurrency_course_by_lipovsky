@@ -1,6 +1,9 @@
 #include <exe/executors/strand.hpp>
 #include <twist/ed/wait/spin.hpp>
 #include <map>
+// #include <twist/ed/stdlike/atomic.hpp>
+
+// using twist::ed::stdlike::atomic;
 
 /**
  * Алгоритм этого решения скопирован из await fw.
@@ -14,7 +17,7 @@
  * принимать по ним решения. В данном случае речь идёт о счётчике scheduled, по
  * которому мы решаем продолжать ли обслуживать очередь ожидания задач или нет.
  * Поэтому я вынес этот счётчик в статическую память в мапу.
- * Кроме того, приходится использовать std::atomic вместо twist/atomic,
+ * Кроме того, приходится использовать std :: atomic вместо twist/atomic,
  * потому что я не знаю, как инициализировать атомики из твиста, когда они в
  * мапе, чтобы это работало для FaultyFibers. В итоге решение не выглядит
  * ожидаемо верным. Надо убрать атомики и статические переменные.
@@ -30,8 +33,7 @@ namespace exe::executors {
 const bool kShouldPrint = false;
 
 static std::map<size_t, std::atomic<size_t>> scheduled;
-static atomic<size_t> max_id{
-    0};  // не атомиком тоже работает, наверно, нет подходящео теста
+static atomic<size_t> max_id{0};  // не атомиком тоже работает, наверно, нет подходящео теста
 
 Strand::Strand(IExecutor& underlying)
     : underlying_(underlying),

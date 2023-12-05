@@ -21,19 +21,14 @@ struct [[nodiscard]] Map {
 
   template <typename T>
   Future<U<T>> Pipe(Future<T> input_future) {
-    printf("Map::Pipe(): starts\n");
     auto [f, p] = Contract<U<T>>();
-    //auto f = std::move(f).Via(input_future.GetExecutor());
     input_future.Subscribe([p = std::move(p), fun = std::forward<F>(fun)](Result<T> result) mutable {
       if (result) {
-        printf("Map::Routine success;\n");
         U<T> value = fun(result.value());
         std::move(p).SetValue(value);
       } else {
-        printf("Map::Routine failure;\n");
         std::move(p).SetError(result.error());
       }
-      printf("Map::Routine ends\n");
     });
     return std::move(f).Via(input_future.GetExecutor());
   }

@@ -82,7 +82,6 @@ class SharedState {
   }
 
   void Clear() {
-    //v_.template emplace<0>();
     result_opt_.reset();
     callback_opt_.reset();
   }
@@ -107,21 +106,21 @@ class SharedState {
     });
   }
 
-void Ll(const char* format, ...) {
-  bool const k_should_print = true;
-  if (!k_should_print) {
-    return;
-  }
+  void Ll(const char* format, ...) {
+    bool const k_should_print = false;
+    if (!k_should_print) {
+      return;
+    }
 
-  char buf[250];
-  std::ostringstream pid;
-  pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
-  sprintf(buf, "%s SharedState::%s\n", pid.str().c_str(), format);
-  va_list args;
-  va_start(args, format);
-  vprintf(buf, args);
-  va_end(args);
-}
+    char buf[250];
+    std::ostringstream pid;
+    pid << "[" << twist::ed::stdlike::this_thread::get_id() << "]";
+    sprintf(buf, "%s SharedState::%s\n", pid.str().c_str(), format);
+    va_list args;
+    va_start(args, format);
+    vprintf(buf, args);
+    va_end(args);
+  }
 };
 
 }  // namespace exe::futures::details

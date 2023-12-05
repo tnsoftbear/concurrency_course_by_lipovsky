@@ -1,6 +1,7 @@
 #pragma once
 
 #include <exe/futures/syntax/pipe.hpp>
+#include <exe/executors/inline.hpp>
 
 namespace exe::futures {
 
@@ -10,10 +11,10 @@ struct [[nodiscard]] Flatten {
   template <typename T>
   Future<T> Pipe(Future<Future<T>> inf) {
     auto [outf, outp] = Contract<T>();
-    inf.Subscribe([outp = std::move(outp)](Result<Future<T>> inf_res) mutable {
+    std::move(inf).Subscribe([outp = std::move(outp)](Result<Future<T>> inf_res) mutable {
       if (inf_res) {
         auto midf = std::move(inf_res.value());
-        midf.Subscribe([outp = std::move(outp)](Result<T> midf_res) mutable {
+        std::move(midf).Subscribe([outp = std::move(outp)](Result<T> midf_res) mutable {
           std::move(outp).Set(std::move(midf_res.value()));
         });
       } else {

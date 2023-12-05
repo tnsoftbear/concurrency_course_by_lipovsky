@@ -29,7 +29,6 @@ struct [[nodiscard]] Get {
 }  // namespace pipe
 
 inline auto Get() {
-  printf("exe::futures::pipe::Get()\n");
   return pipe::Get{};
 }
 

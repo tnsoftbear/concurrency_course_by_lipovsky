@@ -35,7 +35,6 @@ struct [[nodiscard]] Future {
 
   // Blocks current thread, One-shot await and consume future result.
   Result<T> GetResult() {
-    printf("Future::GetResult()\n");
     return ss_->SyncGet();
   }
 
