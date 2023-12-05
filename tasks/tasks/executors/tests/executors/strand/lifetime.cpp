@@ -41,6 +41,7 @@ void StressTest() {
   pool.Start();
 
   for (twist::test::Repeat repeat; repeat.Test(); ) {
+//printf("Test iteration starts\n");
     auto automaton = std::make_shared<Automaton>(pool);
 
     size_t mutations = 1 + repeat.Iter() % 5;
@@ -48,7 +49,9 @@ void StressTest() {
       automaton->AsyncMutate();
     }
 
+//printf("Before automaton.reset();\n");
     automaton.reset();
+//printf("After automaton.reset();\n");
 
     pool.WaitIdle();
   }

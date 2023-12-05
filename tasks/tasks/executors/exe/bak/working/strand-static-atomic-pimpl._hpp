@@ -3,24 +3,27 @@
 #include <exe/executors/executor.hpp>
 
 #include <exe/support/msqueue.hpp>
-
-#include <exe/support/refer/ref_counted.hpp>
+#include <exe/threads/spinlock.hpp>
 
 #include <twist/ed/stdlike/atomic.hpp>
+
+using twist::ed::stdlike::atomic;
 
 namespace exe::executors {
 
 // Strand / serial executor / asynchronous mutex
 
 using twist::ed::stdlike::atomic;
+using exe::threads::SpinLock;
 using TaskQueue = exe::support::MSQueue<Task>;
 
 class Strand : public IExecutor
 {
  private:
-  class Impl : public refer::RefCounted<Impl> {
+  class Impl {
    public:
     explicit Impl(IExecutor& executor);
+    ~Impl();
     void Submit(Task task);
     void Run() noexcept;
    private:
@@ -29,14 +32,16 @@ class Strand : public IExecutor
     void Ll(const char* format, ...);
 
    private:
-    atomic<size_t> scheduled_{0};
+    twist::ed::stdlike::atomic<size_t> scheduled_{0};
     IExecutor& underlying_;
     TaskQueue tasks_;
+    SpinLock lock_;
+    size_t id_;
   };
 
  public:
   explicit Strand(IExecutor& executor)
-    : impl_(refer::New<Impl>(executor)) {};
+    : impl_(new Impl(executor)) {};
 
   // Non-copyable
   Strand(const Strand&) = delete;
@@ -46,12 +51,16 @@ class Strand : public IExecutor
   Strand(Strand&&) = delete;
   Strand& operator=(Strand&&) = delete;
 
+  ~Strand() {
+    delete impl_;
+  }
+
   void Submit(Task task) override {
     return impl_->Submit(std::move(task));
   }  
   
  private:
-  refer::Ref<Impl> impl_;
+  Impl* impl_;
 
 };
 

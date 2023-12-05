@@ -1,23 +1,27 @@
 #include <exe/executors/strand.hpp>
 #include <twist/ed/wait/spin.hpp>
 #include <map>
+// #include <twist/ed/stdlike/atomic.hpp>
+
+// using twist::ed::stdlike::atomic;
 
 /**
  Алгоритм этого решения скопирован из await fw.
  https://gitlab.com/Lipovsky/await/-/blob/master/await/tasks/exe/strand.cpp?ref_type=heads
- Здесь так же используется идиома PImpl, в которой мы выносим логику странда в под-класс Impl.
- К свойству класса Impl, мы обращаемся через обёртку умного указателя с подсчётом ссылок.
- Это позволяет контроллировать время жизни объекта, пока наш враппер вокруг задач `Run()` выполняется до конца в пуле потоков.
- Этот умный указатель я тоже скопировал из https://gitlab.com/Lipovsky/refer/
-
- Это помогло решить проблему, с которой я столкнулся в других решениях,
+ Но он не помогает решить проблему, с которой я столкнулся в других решениях,
  которая проявляется в тесте: clippy target strand_lifetime_tests FaultyFibersASan
  После завершения задачи, объект странда удаляется из памяти, потому что в этом тесте был сделан automation.reset() 
  См. /workspace/concurrency-course/tasks/tasks/executors/tests/executors/strand/lifetime.cpp
  А т.к. this удалён, мы больше не можем обращаться к свойствам объекта и принимать по ним решения.
  В данном случае речь идёт о счётчике scheduled, по которому мы решаем продолжать ли обслуживать очередь ожидания задач или нет.
-
- В другом (работающем, но с ненужными хаками) решении я вынес этот счётчик в статическую память в мапу. См. детали в strand-static-atomic.cpp.
+ Поэтому я вынес этот счётчик в статическую память в мапу. 
+ Кроме того, приходится использовать std :: atomic вместо twist/atomic, 
+ потому что я не знаю, как инициализировать атомики из твиста, когда они в мапе, чтобы это работало для FaultyFibers.
+ В итоге решение не выглядит ожидаемо верным. Надо убрать атомики и статические переменные.
+ 
+ Подсказки:
+ RL: Если вы не используете exchange, вы пишете плохой стренд.
+ IK: Хотя какой exchange здесь может быть, если атомики запрещены?
  
  В решениях лекций 2021, 2022 годов Strand наследовался от std::enable_shared_from_this<Strand>, 
  чтобы создать шаред-пойнтер на себя и передать его в лямбду уходящую в пул потоков (`self = shared_from_this()`), 
@@ -25,11 +29,11 @@
  Но сейчас такое решение падает с ошибкой:
  Test 'Robots_1' FAILED ¯\_(ツ)_/¯: Test subprocess terminated by signal 6, stderr: 
  Panicked at /tmp/clippy-build/FaultyFibers/_deps/twist-src/twist/rt/layer/fiber/runtime/fiber.cpp
- :virtual void twist :: rt::fiber::Fiber::Run()[Line 32]: Uncaught exception in fiber #11: bad_weak_ptr
+ :virtual void twist::rt::fiber::Fiber::Run()[Line 32]: Uncaught exception in fiber #11: bad_weak_ptr
 
  Так же в лекциях присутствует решение Р.Липовского со спинлоком, см. bak/strand-spinlock.cpp, оно падает с ошибкой:
  Panicked at /tmp/clippy-build/FaultyFibers/_deps/twist-src/twist/rt/layer/fiber/runtime/fiber.cpp
- :virtual void twist :: rt::fiber::Fiber::Run()[Line 32]: Uncaught exception in fiber #3: bad_optional_access 
+ :virtual void twist::rt::fiber::Fiber::Run()[Line 32]: Uncaught exception in fiber #3: bad_optional_access 
  */
 
 namespace exe::executors {
@@ -37,38 +41,47 @@ namespace exe::executors {
 //const bool kShouldPrint = true;
 const bool kShouldPrint = false;
 
-Strand::Impl::Impl(IExecutor& executor)
-  : underlying_(executor) {}
+static std::map<size_t, std::atomic<size_t>> scheduled; // Не выходит сделать через twsit-атомик, не получается инициализировать значение при тесте FaultyFibers
+static atomic<size_t> max_id{0};  // не атомиком тоже работает, наверно, нет подходящео теста
 
-void Strand::Impl::Submit(Task task) {
+Strand::Strand(IExecutor& underlying)
+  : underlying_(underlying) 
+  , id_(max_id.fetch_add(1)) {
+    scheduled[id_].store(0);
+  }
+
+Strand::~Strand() {
+  scheduled.erase(id_);
+}
+
+void Strand::Submit(Task task) {
   tasks_.Put(std::move(task));
-  if (scheduled_.fetch_add(1) == 0) {
+  if (scheduled[id_].fetch_add(1) == 0) {
     SubmitSelf();
   }
 }
 
-void Strand::Impl::SubmitSelf() {
-  AddRef();
+void Strand::SubmitSelf() {
   underlying_.Submit([this]()  {
     Run();
   });
 }
 
-void Strand::Impl::Run() noexcept {
+void Strand::Run() {
   TaskQueue processing_tasks;
   do {
     processing_tasks.Put(tasks_.Take().value());
   } while (!tasks_.IsEmpty());
 
+  size_t id = id_;
   const size_t completed = RunTasks(processing_tasks);
-  const size_t prev_queue_size = scheduled_.fetch_sub(completed);
+  const size_t prev_queue_size = scheduled[id].fetch_sub(completed);
   if (prev_queue_size > completed) {
     SubmitSelf();
   }
-  ReleaseRef();
 }
 
-size_t Strand::Impl::RunTasks(TaskQueue& processing_tasks) {
+size_t Strand::RunTasks(TaskQueue& processing_tasks) {
   size_t count = 0;
   while (!processing_tasks.IsEmpty()) {
     processing_tasks.Take().value()();
@@ -77,7 +90,7 @@ size_t Strand::Impl::RunTasks(TaskQueue& processing_tasks) {
   return count;
 }
 
-void Strand::Impl::Ll(const char* format, ...) {
+void Strand::Ll(const char* format, ...) {
   if (!kShouldPrint) {
     return;
   }
