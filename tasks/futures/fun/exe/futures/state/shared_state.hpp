@@ -35,12 +35,12 @@ using twist::ed::stdlike::mutex;
 
 template <typename T>
 class SharedState {
-  // enum class State {
-  //   Initial = 0,
-  //   CallbackSet = 1,
-  //   ResultSet = 2,
-  //   ResultConsumed = 3, // Terminal state
-  // };
+  enum class State {
+    Initial = 0,
+    CallbackSet = 1,
+    ResultSet = 2,
+    ResultConsumed = 3, // Terminal state
+  };
  public:
   Result<T> SyncGet() {
     Ll("Before readiness_cv_.wait");
@@ -60,8 +60,7 @@ class SharedState {
     }
     readiness_cv_.notify_one();
 
-    //if (state_.exchange(State::ResultSet) == State::CallbackSet) {
-    if (callback_opt_) {
+    if (state_.exchange(State::ResultSet) == State::CallbackSet) {
       SubmitCallbackIntoExecutor();
     }
   }
@@ -69,19 +68,16 @@ class SharedState {
   void SetCallback(Callback<T>&& callback) {
     callback_opt_ = std::move(callback);
 
-    //if (state_.exchange(State::CallbackSet) == State::ResultSet) {
-    if (result_opt_) {
+    if (state_.exchange(State::CallbackSet) == State::ResultSet) {
       SubmitCallbackIntoExecutor();
     }
   }
 
   void SetExecutor(executors::IExecutor* executor) {
-    Ll("SetExecutor(%s)", typeid(*executor).name());
     executor_ = executor;
   }
 
   executors::IExecutor& GetExecutor() {
-    Ll("GetExecutor %s",  typeid(*executor_).name());
     return *executor_;
   }
 
@@ -97,7 +93,7 @@ class SharedState {
   condition_variable readiness_cv_;
   std::optional<Callback<T>> callback_opt_;
   executors::IExecutor* executor_ = &executors::Inline();
-  //atomic<State> state_{State::Initial};
+  atomic<State> state_{State::Initial};
 
   void SubmitCallbackIntoExecutor() {
     Ll("SubmitCallbackIntoExecutor(): starts Executor is %s", typeid(*executor_).name());

@@ -8,19 +8,19 @@ namespace pipe {
 
 struct [[nodiscard]] Flatten {
   template <typename T>
-  Future<T> Pipe(Future<Future<T>> input_future) {
-    auto [output_future, output_promise] = Contract<T>();
-    input_future.Subscribe([output_promise = std::move(output_promise)](Result<Future<T>> input_future_result) mutable {
-      if (input_future_result) {
-        auto included_future = std::move(input_future_result.value());
-        included_future.Subscribe([output_promise = std::move(output_promise)](Result<T> included_future_result) mutable {
-          std::move(output_promise).Set(std::move(included_future_result.value()));
+  Future<T> Pipe(Future<Future<T>> inf) {
+    auto [outf, outp] = Contract<T>();
+    inf.Subscribe([outp = std::move(outp)](Result<Future<T>> inf_res) mutable {
+      if (inf_res) {
+        auto midf = std::move(inf_res.value());
+        midf.Subscribe([outp = std::move(outp)](Result<T> midf_res) mutable {
+          std::move(outp).Set(std::move(midf_res.value()));
         });
       } else {
-        std::move(output_promise).SetError(input_future_result.error());
+        std::move(outp).SetError(inf_res.error());
       }
     });
-    return std::move(output_future);
+    return std::move(outf);
   }
 };
 

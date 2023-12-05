@@ -1,0 +1,179 @@
+[  5%] Built target fmt
+[  5%] Built target gflags_nothreads_static
+[ 35%] Built target wheels
+[ 41%] Built target sure
+[ 88%] Built target twist
+[ 88%] Built target course-test
+[ 94%] Built target task_futures_fun_exe
+[100%] Built target task_futures_fun_futures_stress_tests
+Compiler: Ubuntu Clang 14.0.6
+Run tests in subprocesses (set --disable_forks flag to disable forks)
+--------------------------------------------------------------------------------
+Test 'StressFirst' from suite 'Futures' is running...
+Executed in subprocess with pid = 1092773
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+exe::futures::pipe::Get()
+Future::GetResult()
+[140201637177152] SharedState::Before readiness_cv_.wait
+[140201620305664] SharedState::Start invoking callback inside executor
+In f1.Subscribe
+Success
+[140201603520256] SharedState::Start invoking callback inside executor
+In f2.Subscribe
+Success
+[140201637177152] SharedState::After readiness_cv_.wait
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+exe::futures::pipe::Get()
+Future::GetResult()
+[140201620305664] SharedState::Start invoking callback inside executor
+[140201637177152] SharedState::Before readiness_cv_.wait
+In f1.Subscribe
+Success
+[140201637177152] SharedState::After readiness_cv_.wait
+[140201611912960] SharedState::Start invoking callback inside executor
+In f2.Subscribe
+Success
+exe::futures::pipe::Get()
+Future::GetResult()
+[140201637177152] SharedState::Before readiness_cv_.wait
+[140201611912960] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201469302528] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201611912960] SharedState::Start invoking callback inside executor
+In f2.Subscribe
+Success
+[140201469302528] SharedState::Start invoking callback inside executor
+In f1.Subscribe
+[140201637177152] SharedState::After readiness_cv_.wait
+Skip, counter: 1
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+exe::futures::pipe::Get()
+Future::GetResult()
+[140201611912960] SharedState::Start invoking callback inside executor
+In f1.Subscribe
+Success
+[140201637177152] SharedState::Before readiness_cv_.wait
+[140201637177152] SharedState::After readiness_cv_.wait
+[140201469302528] SharedState::Start invoking callback inside executor
+In f2.Subscribe
+Failure
+Skip, counter: 0
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+exe::futures::pipe::Get()
+Future::GetResult()
+[140201637177152] SharedState::Before readiness_cv_.wait
+[140201611912960] SharedState::Start invoking callback inside executor
+In f1.Subscribe
+Success
+[140201603520256] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201637177152] SharedState::After readiness_cv_.wait
+[140201620305664] SharedState::Start invoking callback inside executor
+In f2.Subscribe
+Success
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201620305664] SharedState::Start invoking callback inside executor
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+In f1.Subscribe
+Skip, counter: 18446744073709551615
+exe::futures::pipe::Get()
+Future::GetResult()
+[140201637177152] SharedState::Before readiness_cv_.wait
+[140201611912960] SharedState::Start invoking callback inside executor
+In f2.Subscribe
+Success
+[140201637177152] SharedState::After readiness_cv_.wait
+exe::futures::pipe::Get()
+Future::GetResult()
+[140201637177152] SharedState::Before readiness_cv_.wait
+[140201469302528] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201603520256] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201469302528] SharedState::Start invoking callback inside executor
+In f2.Subscribe
+Success
+[140201620305664] SharedState::Start invoking callback inside executor
+In f1.Subscribe
+Success
+[140201637177152] SharedState::After readiness_cv_.wait
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201611912960] SharedState::Start invoking callback inside executor
+In f1.Subscribe
+Success
+exe::futures::pipe::Get()
+Future::GetResult()
+[140201637177152] SharedState::Before readiness_cv_.wait
+[140201637177152] SharedState::After readiness_cv_.wait
+[140201611912960] SharedState::Start invoking callback inside executor
+In f2.Subscribe
+Skip, counter: 18446744073709551614
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+exe::futures::pipe::Get()
+Future::GetResult()
+[140201469302528] SharedState::Start invoking callback inside executor
+In f1.Subscribe
+Skip, counter: 18446744073709551613
+[140201637177152] SharedState::Before readiness_cv_.wait
+[140201620305664] SharedState::Start invoking callback inside executor
+In f2.Subscribe
+Success
+[140201637177152] SharedState::After readiness_cv_.wait
+exe::futures::pipe::Get()
+Future::GetResult()
+[140201637177152] SharedState::Before readiness_cv_.wait
+[140201611912960] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201611912960] SharedState::Start invoking callback inside executor
+[140201603520256] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+In f1.Subscribe
+Success
+[140201637177152] SharedState::After readiness_cv_.wait
+[140201603520256] SharedState::Start invoking callback inside executor
+In f2.Subscribe
+Success
+exe::futures::pipe::Get()
+Future::GetResult()
+[140201603520256] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201637177152] SharedState::Before readiness_cv_.wait
+[140201469302528] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201603520256] SharedState::Start invoking callback inside executor
+In f1.Subscribe
+Success
+[140201611912960] SharedState::Start invoking callback inside executor
+In f2.Subscribe
+Success
+[140201637177152] SharedState::After readiness_cv_.wait
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+[140201620305664] SharedState::Start invoking callback inside executor
+In f1.Subscribe
+Skip, counter: 18446744073709551612
+[140201637177152] SharedState::SubmitCallbackIntoExecutor(): starts Executor is N3exe9executors2tp7compute10ThreadPoolE
+exe::futures::pipe::Get()
+Future::GetResult()
+[140201637177152] SharedState::Before readiness_cv_.wait
+[140201603520256] SharedState::Start invoking callback inside executor
+In f2.Subscribe
+Skip, counter: 18446744073709551611
+
+Test 'StressFirst' FAILED [¬º-°]¬: Test subprocess terminated by signal 6, stderr: Time limit exceeded - 5 seconds
+
+--------------------------------------------------------------------------------
+Good night, manjaro!
+
+Command running: ['target', 'futures_stress_tests', 'Debug', '--suite', 'Futures', '--test', 'StressFirst'], cwd: /workspace/concurrency-course/tasks/futures/fun
+Time: 2023-12-05 01:10:52
+Platform: Linux-6.1.55-1-MANJARO-x86_64-with-glibc2.29
+Python: 3.8.10, CPython, /workspace/concurrency-course/client/venv/bin/python
+C++ compiler: /usr/bin/clang++-14 (Ubuntu clang version 14.0.6)
+Repository root directory: /workspace/concurrency-course
+Git commit: 154460670c5cd2d003af2a7be448ef4619f883ef
+
+Build target futures_stress_tests in profile Debug
+
+make output:
+
+Run target futures_stress_tests with arguments ['--suite', 'Futures', '--test', 'StressFirst']
+
+/tmp/clippy-build/Debug/tasks/futures/fun/bin/task_futures_fun_futures_stress_tests output:
+Command '['/tmp/clippy-build/Debug/tasks/futures/fun/bin/task_futures_fun_futures_stress_tests', '--suite', 'Futures', '--test', 'StressFirst']' died with <Signals.SIGABRT: 6>.
