@@ -68,7 +68,6 @@ public:
     : ControlBlock(that.data_ptr, that.counter.load()) {}
   ControlBlock() : ControlBlock(nullptr, detail::SplitCount{0, 0}) {}
   ~ControlBlock() {
-    Ll("~ControlBlock() : %p", this);
     delete data_ptr;
     data_ptr = nullptr;
   }
@@ -160,7 +159,7 @@ public:
     }
   }
 
-private: // public, потому что обращаюсь к указателю в AtomicSharedPtr для сохранения его в StampedPtr
+private:
   friend class AtomicSharedPtr<T>;
   ControlBlock* ctrl_ptr_{nullptr};
 
@@ -170,7 +169,8 @@ private:
       detail::SplitCount counter_old, counter_new;
       counter_old = ctrl_ptr_->counter.load();
       do {
-        counter_new = counter_old;  // Хз, почему так не работает: counter_new = ctrl_ptr->counter.load();
+        // counter_new = ctrl_ptr->counter.load(); // Так не работает, хз почему
+        counter_new = counter_old;
         counter_new.strong += strong;
         counter_new.transient += transient;
       } while (!ctrl_ptr_->counter.compare_exchange_weak(counter_old, counter_new));
@@ -233,6 +233,7 @@ class AtomicSharedPtr {
   }
 
   ~AtomicSharedPtr() {
+    // Поместить пустой объект умного указателя, чтобы вытолкнуть хранящийся там ранее
     Store(SharedPtr<T>());
   }
 
@@ -260,8 +261,8 @@ class AtomicSharedPtr {
     StampedPtr<T> stamped_ptr = ToStampedPtr(target);
     StampedPtr<T> old_stamped_ptr = atomic_stamped_ptr_.Exchange(stamped_ptr);
     SharedPtr<T> old_shared_ptr = ToSharedPtr(old_stamped_ptr);
-    // Уменьшаем ссс, потому что забираем объект из владения AtomicStampedPtr.
-    // А так же сводим транзитивный счётчик: counter.transient + stamped_ptrstamp
+    // Уменьшаем ссс, потому что забираем объект из владения AtomicStampedPtr. ccc был предварительно искусственно увеличен.
+    // А так же сводим транзитивный счётчик: counter.transient + stamped_ptr.stamp
     old_shared_ptr.IncrementCounter(-1, old_stamped_ptr.stamp);
   }
 
