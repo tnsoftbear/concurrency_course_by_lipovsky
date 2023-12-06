@@ -41,20 +41,16 @@ struct [[nodiscard]] FlatMap {
 
   template <typename T>
   Future<U<T>> Pipe(Future<T> input_future) {
-    printf("FlatMap::Pipe(): starts\n");
     auto [f, p] = Contract<U<T>>();
     input_future.Subscribe([p = std::move(p), fun = std::forward<F>(fun)](Result<T> result) mutable {
       if (result) {
-        printf("FlatMap::Routine success;\n");
         Future<U<T>> included_future = fun(result.value());
         included_future.Subscribe([p = std::move(p)](Result<U<T>> included_future_result) mutable {
           std::move(p).Set(std::move(included_future_result.value()));
         });
       } else {
-        printf("FlatMap::Routine failure;\n");
         std::move(p).SetError(result.error());
       }
-      printf("FlatMap::Routine ends\n");
     });
     return std::move(f).Via(input_future.GetExecutor());
   }

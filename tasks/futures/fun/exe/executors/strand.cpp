@@ -1,9 +1,7 @@
 #include <exe/executors/strand.hpp>
 #include <twist/ed/wait/spin.hpp>
 #include <map>
-// #include <twist/ed/stdlike/atomic.hpp>
-
-// using twist::ed::stdlike::atomic;
+#include <exe/support/ref_counter.hpp>
 
 /**
  * Алгоритм этого решения скопирован из await fw.
@@ -32,27 +30,20 @@ namespace exe::executors {
 // const bool kShouldPrint = true;
 const bool kShouldPrint = false;
 
-static std::map<size_t, std::atomic<size_t>> scheduled;
-static atomic<size_t> max_id{0};  // не атомиком тоже работает, наверно, нет подходящео теста
-
 Strand::Strand(IExecutor& underlying)
-    : underlying_(underlying),
-      id_(max_id.fetch_add(1)) {
-  scheduled[id_].store(0);
-}
-
-Strand::~Strand() {
-  scheduled.erase(id_);
-}
+    : underlying_(underlying) 
+    , cnt_(new RefCounter())
+    {}
 
 void Strand::Submit(Task task) {
   tasks_.Put(std::move(task));
-  if (scheduled[id_].fetch_add(1) == 0) {
+  if (cnt_->value.fetch_add(1) == 0) {
     SubmitSelf();
   }
 }
 
 void Strand::SubmitSelf() {
+  cnt_->AddRef();
   underlying_.Submit([this]() {
     Run();
   });
@@ -64,12 +55,12 @@ void Strand::Run() {
     processing_tasks.Put(tasks_.Take().value());
   } while (!tasks_.IsEmpty());
 
-  size_t id = id_;
   const size_t completed = RunTasks(processing_tasks);
-  const size_t prev_queue_size = scheduled[id].fetch_sub(completed);
+  const size_t prev_queue_size = cnt_->value.fetch_sub(completed);
   if (prev_queue_size > completed) {
     SubmitSelf();
   }
+  cnt_->ReleaseRef();
 }
 
 size_t Strand::RunTasks(TaskQueue& processing_tasks) {

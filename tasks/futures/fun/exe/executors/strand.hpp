@@ -4,6 +4,7 @@
 
 #include <exe/support/msqueue.hpp>
 #include <exe/threads/spinlock.hpp>
+#include "exe/support/ref_counter.hpp"
 
 namespace exe::executors {
 
@@ -25,9 +26,6 @@ class Strand : public IExecutor {
   Strand(Strand&&) = delete;
   Strand& operator=(Strand&&) = delete;
 
-  ~Strand();
-
-  // IExecutor
   void Submit(Task cs) override;
 
  private:
@@ -40,7 +38,7 @@ class Strand : public IExecutor {
   IExecutor& underlying_;
   TaskQueue tasks_;
   SpinLock lock_;
-  size_t id_;
+  RefCounter* cnt_;
 };
 
 }  // namespace exe::executors

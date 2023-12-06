@@ -16,15 +16,11 @@ struct [[nodiscard]] OrElse {
 
   template <typename T>
   Future<T> Pipe(Future<T> input_future) {
-    printf("OrElse::Pipe(): starts\n");
     auto [f, p] = Contract<T>();
-    //std::move(p).Set(fun(input_future.GetResult().error()));
     input_future.Subscribe([p = std::move(p), fun = std::forward<F>(fun)](Result<T> result) mutable {
       if (!result.has_value()) {
-        printf("OrElse::Routine starts\n");
         std::move(p).Set(fun(result.error()));
       } else {
-        printf("OrElse::Routine skip\n");
         std::move(p).Set(result);
       }
     });
